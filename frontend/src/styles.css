@@ -1,0 +1,681 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: #111827;
+  background: #f5f6f8;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+.topbar {
+  background: #111827;
+  color: white;
+  padding: 30px 5vw;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+}
+
+.eyebrow {
+  margin: 0 0 7px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  font-weight: 800;
+  color: #cbd5e1;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(24px, 3vw, 38px);
+  letter-spacing: -0.04em;
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  color: #cbd5e1;
+}
+
+.badge {
+  border: 1px solid #64748b;
+  border-radius: 999px;
+  padding: 8px 12px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+main {
+  width: min(1400px, 92vw);
+  margin: 26px auto 50px;
+  display: grid;
+  gap: 18px;
+}
+
+.card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 5px 20px rgba(15, 23, 42, 0.04);
+}
+
+.panel-title,
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.section-heading p,
+.panel-title p {
+  margin: 5px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.query-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #d1d5db;
+  border-radius: 9px;
+  padding: 12px 14px;
+  outline: none;
+}
+
+input:focus {
+  border-color: #111827;
+}
+
+button {
+  border: 0;
+  border-radius: 9px;
+  padding: 11px 16px;
+  background: #111827;
+  color: white;
+  font-weight: 700;
+}
+
+button.secondary {
+  background: #eef0f3;
+  color: #111827;
+}
+
+.presets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 11px;
+}
+
+.presets button {
+  padding: 7px 10px;
+  font-size: 12px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+
+.flow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 18px 2px 5px;
+}
+
+.flow-node {
+  min-width: 125px;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  transition: 0.2s;
+}
+
+.flow-node.active {
+  border-color: #111827;
+  background: #f3f4f6;
+  transform: translateY(-2px);
+}
+
+.flow-node.proposed {
+  border: 2px solid #111827;
+}
+
+.node-number {
+  font-size: 10px;
+  color: #6b7280;
+  font-weight: 800;
+}
+
+.flow-node strong {
+  font-size: 12px;
+}
+
+.flow-node small {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.arrow {
+  align-self: center;
+  color: #9ca3af;
+  font-weight: 900;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.cache-state {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.state-box {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 13px;
+  background: #fafafa;
+}
+
+.state-box span,
+.state-box strong {
+  display: block;
+}
+
+.state-box span {
+  color: #6b7280;
+  font-size: 11px;
+}
+
+.state-box strong {
+  margin-top: 4px;
+  font-size: 19px;
+}
+
+.state-box.hit {
+  border: 2px solid #111827;
+}
+
+.state-box.miss {
+  border: 2px dashed #111827;
+}
+
+.match-list {
+  border-top: 1px solid #eee;
+}
+
+.match-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.match-row > div:first-child {
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+}
+
+.match-row span {
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.similarity {
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.similarity > span {
+  display: block;
+  text-align: right;
+  color: #111827;
+  font-weight: 800;
+}
+
+.bar {
+  height: 5px;
+  background: #e5e7eb;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.bar i {
+  display: block;
+  height: 100%;
+  background: #111827;
+}
+
+.candidate {
+  margin-top: 18px;
+  border: 1px solid #d1d5db;
+  border-radius: 11px;
+  padding: 15px;
+}
+
+.candidate-title {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.candidate-title span {
+  color: #6b7280;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.metric {
+  background: #f7f7f8;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.metric span,
+.metric strong {
+  display: block;
+}
+
+.metric span {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.metric strong {
+  margin-top: 3px;
+}
+
+.empty {
+  min-height: 145px;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  color: #6b7280;
+}
+
+.empty small {
+  margin-top: 5px;
+}
+
+.objective-key {
+  display: flex;
+  gap: 15px;
+  color: #6b7280;
+  font-size: 11px;
+  margin-top: 13px;
+}
+
+.legend {
+  font-size: 11px;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #111827;
+  display: inline-block;
+}
+
+.pareto-area {
+  height: 290px;
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.axis-y {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 11px;
+  color: #6b7280;
+  align-self: center;
+}
+
+.chart {
+  flex: 1;
+  position: relative;
+  border-left: 1px solid #111827;
+  border-bottom: 1px solid #111827;
+  background:
+    linear-gradient(to top, transparent 24%, #eee 25%, transparent 26%),
+    linear-gradient(to top, transparent 49%, #eee 50%, transparent 51%),
+    linear-gradient(to top, transparent 74%, #eee 75%, transparent 76%);
+}
+
+.point {
+  position: absolute;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #111827;
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 900;
+  transform: translate(-50%, 50%);
+  border: 3px solid white;
+  box-shadow: 0 0 0 1px #111827;
+}
+
+.candidate-point {
+  background: white;
+  color: #111827;
+  border-color: #111827;
+}
+
+.axis-x {
+  position: absolute;
+  bottom: -27px;
+  width: 100%;
+  text-align: center;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+/* Frontier List - Fixed */
+.frontier-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.frontier-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border-left: 3px solid #2ecc71;
+  flex-wrap: wrap;
+}
+
+.frontier-item strong {
+  font-size: 1rem;
+  color: var(--text-primary);
+  min-width: 40px;
+}
+
+.frontier-item span {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  background: var(--bg-primary);
+  border-radius: 4px;
+}
+
+.frontier-item .frontier-badge {
+  background: #2ecc71;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* If you want to keep using <b> tag instead of div */
+.frontier-item b {
+  background: #2ecc71;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.cache-table,
+.logs {
+  margin-top: 15px;
+  display: grid;
+  gap: 8px;
+}
+
+.cache-entry {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  align-items: center;
+  padding: 11px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 9px;
+}
+
+.cache-entry div {
+  min-width: 0;
+}
+
+.cache-entry strong,
+.cache-entry span {
+  display: block;
+}
+
+.cache-entry span:not(.tag) {
+  color: #6b7280;
+  font-size: 12px;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag {
+  border: 1px solid #111827;
+  border-radius: 999px;
+  padding: 4px 7px;
+  font-size: 9px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.logs {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.logs div {
+  padding: 7px 0;
+  border-bottom: 1px solid #eee;
+}
+
+footer {
+  width: min(1400px, 92vw);
+  margin: 0 auto 30px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  color: #6b7280;
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .frontier-item {
+    grid-template-columns: 45px 1fr;
+  }
+
+  .frontier-item span,
+  .frontier-item b {
+    grid-column: 2;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 620px) {
+  .query-row {
+    flex-direction: column;
+  }
+
+  .cache-state {
+    grid-template-columns: 1fr;
+  }
+
+  .flow {
+    align-items: stretch;
+  }
+
+  .arrow {
+    display: none;
+  }
+}
+/* Add these to your existing styles.css */
+
+/* Volatility badge */
+.volatility-badge {
+  font-size: 0.7rem;
+  background: var(--bg-secondary);
+  padding: 2px 8px;
+  border-radius: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* Cache stats */
+.cache-stats {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.cache-stats span {
+  background: var(--bg-secondary);
+  padding: 2px 10px;
+  border-radius: 12px;
+}
+
+/* Hits badge */
+.hits-badge {
+  font-size: 0.7rem;
+  background: var(--bg-secondary);
+  padding: 1px 8px;
+  border-radius: 12px;
+  color: var(--text-secondary);
+}
+
+/* LLM Response */
+.llm-response {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.llm-response strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--text-primary);
+}
+
+.llm-response p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+/* Tag variants */
+.tag.pareto {
+  background: #2ecc71;
+  color: white;
+}
+
+.tag.dominated {
+  background: #e74c3c;
+  color: white;
+}
+
+/* Preset button active state */
+.presets button.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.presets button small {
+  display: block;
+  font-size: 0.6rem;
+  opacity: 0.7;
+  margin-top: 2px;
+}
