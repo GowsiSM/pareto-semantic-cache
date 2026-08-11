@@ -10,7 +10,7 @@ don't need to subclass anything.
 from __future__ import annotations
 
 from typing import Protocol, Optional
-from scalm.domain.entities import CacheEntry, SemanticPattern
+from backend.domain.entities import CacheEntry, SemanticPattern
 
 
 class EmbeddingProvider(Protocol):

@@ -4,8 +4,8 @@ import uuid
 from dataclasses import dataclass
 from typing import Optional
 
-from scalm.domain.entities import CacheEntry, PatternRank, SemanticPattern
-from scalm.interfaces.protocols import (
+from backend.domain.entities import CacheEntry, PatternRank, SemanticPattern
+from backend.interfaces.protocols import (
     AdmissionPolicy,
     EmbeddingProvider,
     EvictionPolicy,

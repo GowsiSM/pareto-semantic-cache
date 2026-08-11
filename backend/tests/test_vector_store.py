@@ -1,5 +1,5 @@
-from scalm.vector_store.in_memory import InMemoryVectorStore, cosine_similarity
-from scalm.domain.entities import CacheEntry
+from backend.vector_store.in_memory import InMemoryVectorStore, cosine_similarity
+from backend.domain.entities import CacheEntry
 
 
 def make_entry(entry_id: str, embedding: list[float]) -> CacheEntry:

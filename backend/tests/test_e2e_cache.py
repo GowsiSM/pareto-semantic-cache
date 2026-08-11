@@ -1,10 +1,10 @@
-from scalm.cache.admission import RankBasedAdmissionPolicy
-from scalm.cache.eviction import RankSeededLFUEviction
-from scalm.cache.scalm_cache import ScalmCache
-from scalm.domain.entities import PatternRank, SemanticPattern
-from scalm.embedding.mock_embedding import MockEmbeddingProvider
-from scalm.embedding.token_counter import SimpleTokenCounter
-from scalm.vector_store.in_memory import InMemoryVectorStore
+from backend.cache.admission import RankBasedAdmissionPolicy
+from backend.cache.eviction import RankSeededLFUEviction
+from backend.cache.scalm_cache import ScalmCache
+from backend.domain.entities import PatternRank, SemanticPattern
+from backend.embedding.mock_embedding import MockEmbeddingProvider
+from backend.embedding.token_counter import SimpleTokenCounter
+from backend.vector_store.in_memory import InMemoryVectorStore
 
 
 def build_cache(capacity: int = 100, threshold: float = 0.80) -> ScalmCache:

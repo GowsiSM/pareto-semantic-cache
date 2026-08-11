@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import Optional
 
-from scalm.domain.entities import CacheEntry
+from backend.domain.entities import CacheEntry
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:

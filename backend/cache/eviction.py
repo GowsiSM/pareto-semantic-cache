@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from scalm.domain.entities import CacheEntry
+from backend.domain.entities import CacheEntry
 
 
 class RankSeededLFUEviction:

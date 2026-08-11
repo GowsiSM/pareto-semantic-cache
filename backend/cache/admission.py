@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from scalm.domain.entities import CacheEntry, PatternRank, SemanticPattern
+from backend.domain.entities import CacheEntry, PatternRank, SemanticPattern
 
 
 class RankBasedAdmissionPolicy:

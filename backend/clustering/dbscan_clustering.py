@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from sklearn.cluster import DBSCAN
 
-from scalm.domain.entities import PatternRank, SemanticPattern
+from backend.domain.entities import PatternRank, SemanticPattern
 
 
 class DBSCANRoundClustering:

@@ -1,4 +1,4 @@
-# SCALM — Milestone 0
+# Backend — Milestone 0 (SCALM implementation)
 
 In-memory, dependency-light reimplementation of the core algorithmic
 pieces from *SCALM: Towards Semantic Caching for Automated Chat Services

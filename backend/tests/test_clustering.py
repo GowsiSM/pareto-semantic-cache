@@ -1,5 +1,5 @@
-from scalm.clustering.dbscan_clustering import DBSCANRoundClustering
-from scalm.embedding.mock_embedding import MockEmbeddingProvider
+from backend.clustering.dbscan_clustering import DBSCANRoundClustering
+from backend.embedding.mock_embedding import MockEmbeddingProvider
 
 
 def test_similar_queries_land_in_same_pattern():

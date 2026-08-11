@@ -1,8 +1,8 @@
 import pytest
 
-from scalm.cache.admission import RankBasedAdmissionPolicy
-from scalm.cache.eviction import RankSeededLFUEviction
-from scalm.domain.entities import CacheEntry, PatternRank, SemanticPattern
+from backend.cache.admission import RankBasedAdmissionPolicy
+from backend.cache.eviction import RankSeededLFUEviction
+from backend.domain.entities import CacheEntry, PatternRank, SemanticPattern
 
 
 def make_entry(entry_id: str, priority: int, created_at: float) -> CacheEntry:
