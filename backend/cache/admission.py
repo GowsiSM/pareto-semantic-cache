@@ -1,3 +1,6 @@
+"""
+SCALM-style rank-based admission policy.
+"""
 from __future__ import annotations
 
 from typing import Optional
@@ -20,13 +23,19 @@ class RankBasedAdmissionPolicy:
     this default is our engineering interpretation (C), called out here.
     """
 
+    # Pre-compute allowed ranks for faster membership check
+    _ALLOWED_RANKS = {PatternRank.MID, PatternRank.HIGH}
+
     def should_admit(
         self,
         candidate: CacheEntry,
         pattern: Optional[SemanticPattern],
         cache_is_full: bool,
     ) -> bool:
-        rank = pattern.rank if pattern is not None else PatternRank.LOW
         if not cache_is_full:
             return True  # cold/non-full cache admits everything (low+)
-        return rank in (PatternRank.MID, PatternRank.HIGH)
+
+        # Full cache: only MID and HIGH rank are admitted
+        if pattern is None:
+            return False
+        return pattern.rank in self._ALLOWED_RANKS

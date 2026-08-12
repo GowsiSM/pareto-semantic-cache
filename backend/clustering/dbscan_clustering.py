@@ -1,3 +1,6 @@
+"""
+DBSCAN-based round clustering for SCALM.
+"""
 from __future__ import annotations
 
 import uuid
@@ -54,27 +57,28 @@ class DBSCANRoundClustering:
             key = label if label != -1 else f"noise-{idx}"
             clusters[key].append(idx)
 
+        dim = len(embeddings[0]) if embeddings else 0
         patterns: list[SemanticPattern] = []
+
         for member_indices in clusters.values():
-            member_embeddings = [embeddings[i] for i in member_indices]
-            centroid = _mean_vector(member_embeddings)
+            # Single-pass centroid computation (no intermediate list)
+            centroid = [0.0] * dim
+            for idx in member_indices:
+                emb = embeddings[idx]
+                for i, val in enumerate(emb):
+                    centroid[i] += val
+            centroid = [v / len(member_indices) for v in centroid]
+
+            member_ids = [entry_ids[i] for i in member_indices]
+
             patterns.append(
                 SemanticPattern(
                     pattern_id=str(uuid.uuid4()),
                     round_index=round_index,
                     centroid=centroid,
-                    member_entry_ids=[entry_ids[i] for i in member_indices],
+                    member_entry_ids=member_ids,
                     rank=PatternRank.LOW,  # default; caller re-ranks after
                     # computing token_saving_ratio across all patterns.
                 )
             )
         return patterns
-
-
-def _mean_vector(vectors: list[list[float]]) -> list[float]:
-    dim = len(vectors[0])
-    sums = [0.0] * dim
-    for v in vectors:
-        for i, val in enumerate(v):
-            sums[i] += val
-    return [s / len(vectors) for s in sums]

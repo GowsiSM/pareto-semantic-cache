@@ -1,3 +1,6 @@
+"""
+Token counter for SCALM.
+"""
 from __future__ import annotations
 
 
