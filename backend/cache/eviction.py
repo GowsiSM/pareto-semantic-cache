@@ -1,3 +1,6 @@
+"""
+SCALM-style rank-seeded LFU eviction policy.
+"""
 from __future__ import annotations
 
 from backend.domain.entities import CacheEntry
@@ -17,9 +20,17 @@ class RankSeededLFUEviction:
     """
 
     def select_victim(self, entries: list[CacheEntry]) -> CacheEntry:
+        """
+        Select victim with lowest priority; tie broken by oldest.
+        Uses manual loop for better performance than min() with lambda.
+        """
         if not entries:
             raise ValueError("Cannot select a victim from an empty entry list")
-        return min(
-            entries,
-            key=lambda e: (e.eviction_priority, e.created_at),
-        )
+
+        victim = entries[0]
+        for entry in entries[1:]:
+            if (entry.eviction_priority < victim.eviction_priority or
+                (entry.eviction_priority == victim.eviction_priority and
+                 entry.created_at < victim.created_at)):
+                victim = entry
+        return victim

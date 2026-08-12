@@ -1,6 +1,9 @@
+"""
+SCALM main cache orchestrator.
+"""
 from __future__ import annotations
 
-import uuid
+import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -58,17 +61,24 @@ class ScalmCache:
         self._eviction = eviction_policy
         self._capacity = capacity
         self._threshold = similarity_threshold
+        self._id_counter = 0
+        self._hit_count = 0
+        self._miss_count = 0
 
     def lookup(self, query_text: str) -> LookupResult:
         query_embedding = self._embedding.embed(query_text)
         candidates = self._store.search(query_embedding, top_k=1)
         if not candidates:
+            self._miss_count += 1
             return LookupResult(hit=False, entry=None, similarity=None)
 
         entry, similarity = candidates[0]
         if similarity >= self._threshold:
             entry.record_hit()
+            self._hit_count += 1
             return LookupResult(hit=True, entry=entry, similarity=similarity)
+
+        self._miss_count += 1
         return LookupResult(hit=False, entry=None, similarity=similarity)
 
     def store(
@@ -78,15 +88,25 @@ class ScalmCache:
         pattern: Optional[SemanticPattern] = None,
     ) -> Optional[CacheEntry]:
         embedding = self._embedding.embed(query_text)
+        query_tokens = self._tokens.count(query_text)
+        answer_tokens = self._tokens.count(answer_text)
+
+        # Fast ID generation (sequential + timestamp)
+        self._id_counter += 1
+        entry_id = f"e{self._id_counter}_{int(time.time() * 1000)}"
+
+        rank = pattern.rank if pattern else PatternRank.LOW
+        eviction_priority = _priority_for_rank(rank)
+
         candidate = CacheEntry(
-            entry_id=str(uuid.uuid4()),
+            entry_id=entry_id,
             query_text=query_text,
             answer_text=answer_text,
             embedding=embedding,
             pattern_id=pattern.pattern_id if pattern else None,
-            query_token_count=self._tokens.count(query_text),
-            answer_token_count=self._tokens.count(answer_text),
-            eviction_priority=_priority_for_rank(pattern.rank if pattern else PatternRank.LOW),
+            query_token_count=query_tokens,
+            answer_token_count=answer_tokens,
+            eviction_priority=eviction_priority,
         )
 
         cache_is_full = self._store.size() >= self._capacity
@@ -103,6 +123,24 @@ class ScalmCache:
     @property
     def size(self) -> int:
         return self._store.size()
+
+    @property
+    def hit_rate(self) -> float:
+        total = self._hit_count + self._miss_count
+        return self._hit_count / total if total > 0 else 0.0
+
+    @property
+    def stats(self) -> dict:
+        total = self._hit_count + self._miss_count
+        return {
+            "size": self.size,
+            "capacity": self._capacity,
+            "hits": self._hit_count,
+            "misses": self._miss_count,
+            "hit_rate": self.hit_rate,
+            "total_queries": total,
+            "is_full": self.size >= self._capacity,
+        }
 
 
 def _priority_for_rank(rank: PatternRank) -> int:

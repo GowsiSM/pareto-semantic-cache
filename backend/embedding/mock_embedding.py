@@ -1,14 +1,16 @@
+"""
+Mock embedding provider for testing and CI.
+"""
 from __future__ import annotations
 
-import hashlib
 import re
+import hashlib
+
+# Pre-compile regex pattern for performance
+_WORD_PATTERN = re.compile(r"[a-z0-9]+")
 
 # Minimal stopword list. The paper explicitly calls for "removing
-# excessive stop words" as part of similarity preprocessing (section IV-A);
-# without this, bag-of-words hashing lets words like "is"/"the"/"in" create
-# spurious similarity between semantically unrelated queries. This was
-# caught by test_clustering.py during Milestone 0 verification, not
-# assumed up front.
+# excessive stop words" as part of similarity preprocessing (section IV-A).
 _STOPWORDS = {
     "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
     "in", "on", "at", "to", "for", "of", "and", "or", "but", "with",
@@ -41,12 +43,18 @@ class MockEmbeddingProvider:
 
     def embed(self, text: str) -> list[float]:
         vec = [0.0] * self.dimensions
-        words = [w for w in re.findall(r"[a-z0-9]+", text.lower()) if w not in _STOPWORDS]
+        words = _WORD_PATTERN.findall(text.lower())
+        # Filter stopwords (set lookup is O(1))
+        words = [w for w in words if w not in _STOPWORDS]
         if not words:
             return vec
+
+        # Hash each word using MD5 (deterministic across runs)
         for word in words:
             idx = int(hashlib.md5(word.encode("utf-8")).hexdigest(), 16) % self.dimensions
             vec[idx] += 1.0
+
+        # L2 normalize
         norm = sum(v * v for v in vec) ** 0.5
         if norm > 0:
             vec = [v / norm for v in vec]
