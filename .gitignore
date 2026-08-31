@@ -62,3 +62,9 @@ tmp/
 temp/
 *.tmp
 *.temp
+
+# Data files
+data/
+*.jsonl
+*.zip
+*.parquet
