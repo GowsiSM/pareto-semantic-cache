@@ -5,15 +5,25 @@ Debug MOSS dataset structure to understand the actual format.
 
 import json
 import os
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR = PROJECT_ROOT / "data"
+
+
+def safe_preview(value: str, max_chars: int = 80) -> str:
+    preview = str(value)[:max_chars]
+    return preview.encode("ascii", errors="replace").decode("ascii")
+
 
 def debug_moss(file_path, num_lines=5):
     """Inspect the actual structure of MOSS dataset."""
     
-    print(f"📂 Debugging: {file_path}")
-    print(f"📝 Reading first {num_lines} lines\n")
+    print(f"Debugging: {file_path}")
+    print(f"Reading first {num_lines} lines\n")
     
     if not os.path.exists(file_path):
-        print(f"❌ File not found: {file_path}")
+        print(f"File not found: {file_path}")
         return
     
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -30,7 +40,7 @@ def debug_moss(file_path, num_lines=5):
                 data = json.loads(line)
                 
                 # Print all top-level keys
-                print(f"\n📋 Top-level keys: {list(data.keys())}")
+                print(f"\nTop-level keys: {list(data.keys())}")
                 
                 # Print conversation_id
                 if 'conversation_id' in data:
@@ -38,13 +48,13 @@ def debug_moss(file_path, num_lines=5):
                 
                 # Print meta_instruction preview
                 if 'meta_instruction' in data:
-                    preview = data['meta_instruction'][:100] + "..."
+                    preview = safe_preview(data['meta_instruction'], 100) + "..."
                     print(f"   meta_instruction: {preview}")
                 
                 # Inspect chat structure
                 if 'chat' in data:
                     chat = data['chat']
-                    print(f"\n📋 chat type: {type(chat).__name__}")
+                    print(f"\nchat type: {type(chat).__name__}")
                     
                     if isinstance(chat, dict):
                         print(f"   chat keys: {list(chat.keys())[:5]}")
@@ -58,10 +68,10 @@ def debug_moss(file_path, num_lines=5):
                             
                             if isinstance(turn, dict):
                                 if 'Human' in turn:
-                                    preview = turn['Human'][:80] + "..."
+                                    preview = safe_preview(turn['Human'], 80) + "..."
                                     print(f"      Human: {preview}")
                                 if 'MOSS' in turn:
-                                    preview = turn['MOSS'][:80] + "..."
+                                    preview = safe_preview(turn['MOSS'], 80) + "..."
                                     print(f"      MOSS: {preview}")
                     
                     elif isinstance(chat, list):
@@ -74,12 +84,17 @@ def debug_moss(file_path, num_lines=5):
                                 if 'role' in turn:
                                     print(f"      role: {turn.get('role')}")
                                 if 'content' in turn:
-                                    preview = turn.get('content', '')[:80] + "..."
+                                    preview = safe_preview(turn.get('content', ''), 80) + "..."
                                     print(f"      content: {preview}")
                 
             except json.JSONDecodeError as e:
-                print(f"❌ JSON decode error: {e}")
-                print(f"   Line preview: {line[:100]}...")
+                print(f"JSON decode error: {e}")
+                print(f"   Line preview: {safe_preview(line[:100], 100)}...")
 
 if __name__ == "__main__":
-    debug_moss("moss-sample-10k.jsonl", num_lines=3)
+    sample_candidates = [
+        DATA_DIR / "moss-sample-10k.jsonl",
+        PROJECT_ROOT / "moss-sample-10k.jsonl",
+    ]
+    target_path = next((path for path in sample_candidates if path.exists()), sample_candidates[0])
+    debug_moss(str(target_path), num_lines=3)
