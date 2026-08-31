@@ -30,12 +30,12 @@ class MOSSLoader:
     def _load(self):
         """Load conversations with limit."""
         if not os.path.exists(self.file_path):
-            print(f"❌ File not found: {self.file_path}")
+            print(f"File not found: {self.file_path}")
             return
         
         size = os.path.getsize(self.file_path)
         size_mb = size / (1024**2)
-        print(f"📊 File size: {size_mb:.1f} MB")
+        print(f"File size: {size_mb:.1f} MB")
         
         loaded = 0
         with open(self.file_path, 'r', encoding='utf-8') as f:
@@ -54,7 +54,7 @@ class MOSSLoader:
                 except json.JSONDecodeError:
                     continue
         
-        print(f"✅ Loaded {len(self.conversations):,} conversations")
+        print(f"Loaded {len(self.conversations):,} conversations")
     
     def _clean_text(self, text: str) -> str:
         """Remove special tokens like <|Human|>, <|MOSS|>, <eoh>."""
@@ -132,8 +132,8 @@ class MOSSLoader:
             return
         
         conv = self.conversations[0]
-        print("\n📋 First conversation structure:")
-        print(json.dumps(conv, indent=2, ensure_ascii=False)[:1500])
+        print("\nFirst conversation structure:")
+        print(json.dumps(conv, indent=2, ensure_ascii=True)[:1500])
     
     def get_stats(self) -> dict:
         """Get dataset statistics."""

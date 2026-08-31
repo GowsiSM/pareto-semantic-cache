@@ -49,6 +49,8 @@ flowchart TD
 
 ```
 ├── backend
+│   ├── __init__.py
+│   ├── requirements.txt
 │   ├── clustering
 │   │   ├── __init__.py
 │   │   └── dbscan_clustering.py
@@ -58,7 +60,12 @@ flowchart TD
 │   ├── embedding
 │   │   ├── __init__.py
 │   │   ├── mock_embedding.py
+│   │   ├── sentence_transformer_provider.py
 │   │   └── token_counter.py
+│   ├── experiment
+│   │   ├── __init__.py
+│   │   ├── moss_loader.py
+│   │   └── scalm_validator.py
 │   ├── interfaces
 │   │   ├── __init__.py
 │   │   └── protocols.py
@@ -67,12 +74,20 @@ flowchart TD
 │   │   ├── test_admission_eviction.py
 │   │   ├── test_clustering.py
 │   │   ├── test_e2e_cache.py
+│   │   ├── test_loader.py
 │   │   └── test_vector_store.py
 │   ├── vector_store
 │   │   ├── __init__.py
+│   │   ├── faiss_store.py
 │   │   └── in_memory.py
-│   ├── __init__.py
-│   └── requirements.txt
+│   └── cache
+│       ├── __init__.py
+│       ├── admission.py
+│       ├── eviction.py
+│       └── scalm_cache.py
+├── data
+│   ├── moss-003-sft-no-tools.jsonl
+│   └── moss_sample.jsonl
 ├── frontend
 │   ├── src
 │   │   ├── App.jsx
@@ -85,8 +100,14 @@ flowchart TD
 │   ├── package.json
 │   ├── vercel.json
 │   └── vite.config.js
+├── scripts
+│   ├── run.py
+│   ├── extract_sample.py
+│   └── debug_moss.py
+├── .editorconfig
 ├── .gitignore
-└── README.md
+├── README.md
+└── .vscode
 ```
 
 - **`backend/`** — the semantic cache engine itself: embedding, clustering, admission, eviction, and lookup logic. See [`backend/README.md`](backend/README.md) for implementation-level details.
