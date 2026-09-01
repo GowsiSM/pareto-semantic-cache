@@ -1,4 +1,4 @@
-from backend.clustering.dbscan_clustering import DBSCANRoundClustering
+from backend.scalm.clustering import DBSCANRoundClustering
 from backend.embedding.mock_embedding import MockEmbeddingProvider
 
 

@@ -1,4 +1,4 @@
-# backend/experiment/scalm_validator.py
+# backend/scalm/validator.py
 from typing import List, Tuple, Dict
 from backend.cache.scalm_cache import ScalmCache
 from backend.cache.admission import RankBasedAdmissionPolicy
@@ -6,7 +6,7 @@ from backend.cache.eviction import RankSeededLFUEviction
 from backend.embedding.sentence_transformer_provider import SentenceTransformerEmbeddingProvider
 from backend.embedding.token_counter import SimpleTokenCounter
 from backend.vector_store.in_memory import InMemoryVectorStore
-from backend.clustering.dbscan_clustering import DBSCANRoundClustering
+from backend.scalm.clustering import DBSCANRoundClustering
 from backend.domain.entities import PatternRank, SemanticPattern
 
 class SCALMValidator:

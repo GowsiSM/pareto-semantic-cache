@@ -51,9 +51,13 @@ flowchart TD
 ├── backend
 │   ├── __init__.py
 │   ├── requirements.txt
-│   ├── clustering
+│   ├── baselines
 │   │   ├── __init__.py
-│   │   └── dbscan_clustering.py
+│   │   └── gptcache.py
+│   ├── classifier
+│   │   ├── __init__.py
+│   │   ├── domain_classifier.py
+│   │   └── volatility_classifier.py
 │   ├── domain
 │   │   ├── __init__.py
 │   │   └── entities.py
@@ -62,20 +66,36 @@ flowchart TD
 │   │   ├── mock_embedding.py
 │   │   ├── sentence_transformer_provider.py
 │   │   └── token_counter.py
+│   ├── evaluation
+│   │   ├── __init__.py
+│   │   └── metrics.py
 │   ├── experiment
 │   │   ├── __init__.py
-│   │   ├── moss_loader.py
-│   │   └── scalm_validator.py
+│   │   ├── lmsys_loader.py
+│   │   └── moss_loader.py
 │   ├── interfaces
 │   │   ├── __init__.py
 │   │   └── protocols.py
+│   ├── pareto
+│   │   ├── __init__.py
+│   │   ├── admission.py
+│   │   ├── dominance.py
+│   │   ├── frontier.py
+│   │   ├── threshold.py
+│   │   └── validator.py
+│   ├── scalm
+│   │   ├── __init__.py
+│   │   ├── clustering.py
+│   │   └── validator.py
 │   ├── tests
 │   │   ├── __init__.py
-│   │   ├── test_admission_eviction.py
-│   │   ├── test_clustering.py
 │   │   ├── test_e2e_cache.py
 │   │   ├── test_loader.py
-│   │   └── test_vector_store.py
+│   │   ├── test_vector_store.py
+│   │   └── scalm
+│   │       ├── __init__.py
+│   │       ├── test_admission_eviction.py
+│   │       └── test_clustering.py
 │   ├── vector_store
 │   │   ├── __init__.py
 │   │   ├── faiss_store.py
@@ -101,9 +121,11 @@ flowchart TD
 │   ├── vercel.json
 │   └── vite.config.js
 ├── scripts
-│   ├── run.py
+│   ├── audit_rank_volatility.py
+│   ├── debug_moss.py
 │   ├── extract_sample.py
-│   └── debug_moss.py
+│   ├── run_pareto.py
+│   └── run_scalm.py
 ├── .editorconfig
 ├── .gitignore
 ├── README.md

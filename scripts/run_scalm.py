@@ -1,4 +1,4 @@
-# run.py
+# run_scalm.py
 """
 Run SCALM validation on the MOSS dataset.
 Uses the 10k sample extracted from the full dataset.
@@ -13,7 +13,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from backend.experiment.moss_loader import MOSSLoader
-from backend.experiment.scalm_validator import SCALMValidator
+from backend.scalm.validator import SCALMValidator
 
 DATA_DIR = PROJECT_ROOT / "data"
 DATASET_CANDIDATES = [
