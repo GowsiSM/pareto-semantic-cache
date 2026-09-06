@@ -1,15 +1,15 @@
-"""Joint Admission Score (JAS) for Pareto-style admission.
+"""Project-proposed Joint Admission Score (JAS) for Pareto-style admission.
 
-The paper defines JAS as a separate signal from the Pareto skyline itself:
-TSR × (1 − α · vol(c)). Section V-B describes it as one of the coordinated
-modules that filters candidates before the frontier pruning step in V-C.
+JAS is an extension proposed by this project, not a mechanism defined by the
+SCALM paper. It combines token-saving ratio (TSR) with a normalized volatility
+signal before Pareto-style admission.
 """
 
 from __future__ import annotations
 
 
 class JointAdmissionScore:
-    """Compute the Section V-B JAS value for a candidate cache entry."""
+    """Compute the project's proposed JAS value for a candidate cache entry."""
 
     def __init__(self, alpha: float = 0.5) -> None:
         self.alpha = alpha

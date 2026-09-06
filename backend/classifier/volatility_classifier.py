@@ -1,8 +1,8 @@
-"""Volatility classifier for SCALM audit and Pareto signal scoring.
+"""Project-proposed volatility classifier for cache signal scoring.
 
-Section IV-B and Section V-B in the paper use a volatility signal to separate
-stable, temporal, and personal queries. This simplified implementation keeps the
-paper's conceptual behavior without depending on a heavyweight training pipeline.
+The stable, temporal, and personal categories are an engineering extension
+introduced by this project, not a classification scheme defined by SCALM.
+This lightweight implementation avoids a heavyweight training pipeline.
 """
 
 from __future__ import annotations

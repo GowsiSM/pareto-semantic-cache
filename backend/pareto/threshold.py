@@ -1,8 +1,7 @@
-"""Adaptive threshold adapter for Pareto semanti-cache admission.
+"""Project-proposed adaptive threshold adapter for Pareto-style admission.
 
-This implements the paper's domain-aware threshold adaptation described in
-Section V-D: τ = τ_base + β * something, with domain-specific adjustments such
-as medical/legal/code variations.
+Domain-specific adjustments and volatility penalties are extensions proposed by
+this project; they are not defined by the SCALM paper.
 """
 
 from __future__ import annotations

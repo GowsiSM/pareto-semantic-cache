@@ -1,4 +1,4 @@
-"""Evaluation metrics used to compare No Cache, GPTCache, SCALM, and SemantiCache."""
+"""Evaluation metrics used to compare No Cache, GPTCache, SCALM, and this project."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ def compute_metrics(
     false_hits: int = 0,
     admission_overhead: float = 0.0,
 ) -> EvaluationMetrics:
-    """Compute the shared metrics used across all systems in Section VI."""
+    """Compute the shared metrics used to compare the evaluated systems."""
     total = max(total_queries, hits + misses)
     cache_hit_ratio = hits / total if total else 0.0
     token_saving_ratio = tokens_saved / total_tokens if total_tokens else 0.0

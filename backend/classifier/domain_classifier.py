@@ -1,4 +1,8 @@
-"""Domain classifier for the paper's Section V-D domain-aware thresholds."""
+"""Project-proposed domain classifier for adaptive threshold experiments.
+
+The domain buckets and keyword rules are extensions introduced by this project;
+they are not defined by the SCALM paper.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +10,7 @@ from typing import Iterable, Sequence
 
 
 class DomainClassifier:
-    """Classify a request into one of the paper's domain buckets."""
+    """Classify a request into one of the project's domain buckets."""
 
     DOMAIN_KEYWORDS = {
         "medical": {"doctor", "patient", "diagnosis", "symptom", "treatment", "medication", "clinic"},
