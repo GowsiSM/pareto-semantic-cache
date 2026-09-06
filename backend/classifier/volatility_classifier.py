@@ -1,12 +1,23 @@
-"""Project-proposed volatility classifier for cache signal scoring.
+"""Volatility classifier for the Pareto extension's signal scoring.
 
-The stable, temporal, and personal categories are an engineering extension
-introduced by this project, not a classification scheme defined by SCALM.
-This lightweight implementation avoids a heavyweight training pipeline.
+PROJECT-PROPOSED EXTENSION — not from the SCALM paper. The SCALM paper
+(Li et al., 2024) has no volatility concept, no STABLE/TEMPORAL/PERSONAL
+categories, and no "Section IV-B / V-B" content matching this. That
+citation was incorrect in an earlier version of this file.
+
+This is a simple keyword-based heuristic classifier for this project's
+own volatility signal (motivation: an answer to a time-sensitive or
+personal query is more likely to go stale or be wrong for a different
+user than an answer to a stable factual query, so caching it long-term
+is riskier). The category boundaries and volatility_score values below
+are design choices, not derived from any paper or validated against
+real staleness data yet — see backend/README.md for what's actually
+been validated versus proposed.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Iterable, Sequence
 
 
@@ -44,14 +55,25 @@ class VolatilityClassifier:
     }
 
     def predict(self, text: str) -> str:
-        """Return one of {STABLE, TEMPORAL, PERSONAL}."""
+        """Return one of {STABLE, TEMPORAL, PERSONAL}.
+
+        BUG FIX: an earlier version used naive substring matching
+        (`token in normalized`), which false-positived badly -- e.g. the
+        single-character PERSONAL token "i" matches as a substring of
+        "describe" and "gravity" (both contain the letter "i"), and "us"
+        matches inside "discuss". Caught via
+        backend/tests/pareto/test_cache.py finding a STABLE query
+        classified as PERSONAL with volatility 0.85 instead of 0.0. Now
+        uses word-level set membership instead of substring search.
+        """
         normalized = (text or "").lower()
         if not normalized:
             return "STABLE"
 
-        if any(token in normalized for token in self.TEMPORAL_TOKENS):
+        words = set(re.findall(r"[a-z0-9]+", normalized))
+        if words & self.TEMPORAL_TOKENS:
             return "TEMPORAL"
-        if any(token in normalized for token in self.PERSONAL_TOKENS):
+        if words & self.PERSONAL_TOKENS:
             return "PERSONAL"
         return "STABLE"
 
