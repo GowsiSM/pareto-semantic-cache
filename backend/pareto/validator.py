@@ -1,24 +1,109 @@
-"""Pareto validator scaffold.
+"""Pareto validator: runs the ParetoCache over QA pairs and reports metrics.
 
-This is intentionally lightweight while the Pareto implementation is under
-construction. It mirrors the SCALM validator pattern but delegates the actual
-frontier logic to the Pareto modules under backend/pareto/.
+Mirrors backend/scalm/validator.py's SCALMValidator shape deliberately,
+so the two produce directly comparable output (same metric names, same
+cold-start/replay structure) for an experiment harness to diff.
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Dict, List, Tuple
+
+from backend.embedding.token_counter import SimpleTokenCounter
+from backend.pareto.cache import ParetoCache
+from backend.vector_store.in_memory import InMemoryVectorStore
 
 
 class ParetoValidator:
-    """Placeholder validator for the Pareto-based semantic cache."""
+    """Validate the Pareto cache extension against QA pairs."""
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self.args = args
-        self.kwargs = kwargs
+    def __init__(
+        self,
+        capacity: int = 100,
+        embedding_provider: Any = None,
+        similarity_threshold: float = 0.90,
+    ) -> None:
+        self.capacity = capacity
+        self.similarity_threshold = similarity_threshold
+        if embedding_provider is None:
+            # Default to the mock provider so this validator is usable
+            # with zero external dependencies for logic validation; pass
+            # a real provider explicitly for actual dataset experiments.
+            from backend.embedding.mock_embedding import MockEmbeddingProvider
 
-    def run(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
-        raise NotImplementedError(
-            "Pareto validation is not implemented yet; add objective scoring and "
-            "frontier logic in backend/pareto before wiring the runner."
+            embedding_provider = MockEmbeddingProvider()
+        self.embedding_provider = embedding_provider
+        self.token_counter = SimpleTokenCounter()
+        self.cache = ParetoCache(
+            embedding_provider=self.embedding_provider,
+            vector_store=InMemoryVectorStore(),
+            token_counter=self.token_counter,
+            capacity=capacity,
+            similarity_threshold=similarity_threshold,
         )
+        self.stats = {
+            "hits": 0,
+            "misses": 0,
+            "tokens_saved": 0,
+            "total_tokens": 0,
+            "llm_calls": 0,
+        }
+
+    def run(self, qa_pairs: List[Tuple[str, str]], warmup_count: int = 100) -> Dict:
+        """
+        Run Pareto cache validation on QA pairs. Same two-phase shape as
+        SCALMValidator.run(): warm up the cache unconditionally (cold
+        cache admits everything for both systems), then replay the rest
+        through lookup/store and record hit/token metrics.
+        """
+        for query, response in qa_pairs[:warmup_count]:
+            self.cache.store(query, response)
+
+        for query, response in qa_pairs[warmup_count:]:
+            response_tokens = self.token_counter.count(response)
+            self.stats["total_tokens"] += response_tokens
+
+            result = self.cache.lookup(query)
+
+            if result.hit:
+                self.stats["hits"] += 1
+                self.stats["tokens_saved"] += response_tokens
+            else:
+                self.stats["misses"] += 1
+                self.stats["llm_calls"] += 1
+                self.cache.store(query, response)
+
+        total = self.stats["hits"] + self.stats["misses"]
+        hit_rate = self.stats["hits"] / total if total > 0 else 0
+        token_saving_rate = (
+            self.stats["tokens_saved"] / self.stats["total_tokens"]
+            if self.stats["total_tokens"] > 0
+            else 0
+        )
+
+        return {
+            "hit_rate": hit_rate,
+            "token_saving_rate": token_saving_rate,
+            "hits": self.stats["hits"],
+            "misses": self.stats["misses"],
+            "total_queries": total,
+            "llm_calls": self.stats["llm_calls"],
+            "tokens_saved": self.stats["tokens_saved"],
+            "total_tokens": self.stats["total_tokens"],
+        }
+
+    def reset(self) -> None:
+        self.cache = ParetoCache(
+            embedding_provider=self.embedding_provider,
+            vector_store=InMemoryVectorStore(),
+            token_counter=self.token_counter,
+            capacity=self.capacity,
+            similarity_threshold=self.similarity_threshold,
+        )
+        self.stats = {
+            "hits": 0,
+            "misses": 0,
+            "tokens_saved": 0,
+            "total_tokens": 0,
+            "llm_calls": 0,
+        }
