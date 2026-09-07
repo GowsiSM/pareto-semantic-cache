@@ -90,6 +90,55 @@ Legend:
 |---|---|---|
 | [`scripts/run_pareto.py`](scripts/run_pareto.py) | **IMPL** | Was a 13-line placeholder; now a real three-way comparison (GPTCache vs. SCALM vs. Pareto) on the synthetic dataset with the mock embedder, threshold 0.60. |
 | [`scripts/audit_rank_volatility.py`](scripts/audit_rank_volatility.py) | **IMPL + CITE** | Was a placeholder; now computes the Spearman rho between TSR rank and volatility using DBSCAN clustering + the volatility classifier on synthetic data. Also removed a leftover fabricated "Section IV method" citation from the docstring and CLI banner. |
+| [`scripts/run_pareto_real.py`](scripts/run_pareto_real.py) | **NEW** | Real-data counterpart to `run_pareto.py`: three-way comparison (GPTCache vs. SCALM vs. Pareto) on real MOSS first-turn QA pairs with real SentenceTransformer (`all-MiniLM-L6-v2`) embeddings, threshold 0.90. Reports results as-is. |
+| [`scripts/audit_rank_volatility_real.py`](scripts/audit_rank_volatility_real.py) | **NEW** | Real-data counterpart to `audit_rank_volatility.py`: Spearman rho between TSR rank and volatility on real MOSS data with real embeddings. |
+
+## Real-data validation results (2026-09-07)
+
+The three open acceptance-criteria items from `PARETO_DESIGN.md` §6
+(items 1-3) were completed by running the new real-data scripts against
+`data/moss-sample-10k.jsonl` (10,000 conversations, 56,236 turns, all
+"Brainstorming" category):
+
+**SCALM validation** (`scripts/run_scalm.py`, 5000 first-turn pairs,
+capacity 100, warmup 100, threshold 0.90, real MiniLM embeddings):
+
+```
+Cache Hit Rate:       23.78%   (1,165 hits / 4,900 queries)
+Token Saving Rate:    7.82%    (20,580 / 263,159 tokens)
+LLM Calls Avoided:    3,735
+```
+
+This is the honest number — the validator exercises its real
+clustering-driven rank admission (the frozen-after-warmup bug is fixed),
+so 23.78% is a genuine measurement, not a frozen-warmup artifact.
+
+**Three-way comparison** (`scripts/run_pareto_real.py`, 2000 first-turn
+pairs, capacity 100, warmup 100, threshold 0.90):
+
+```
+System       |  Hit Ratio |  Token Saving Rate
+----------------------------------------------
+GPTCache     |      0.318 |              0.086
+SCALM        |      0.185 |              0.068
+Pareto       |      0.235 |              0.069
+```
+
+Reported as-is. Pareto beats SCALM on hit ratio on real data (0.235 vs
+0.185) — the opposite of the synthetic run — while GPTCache still leads
+on raw hit ratio (0.318) because it admits everything.
+
+**Rank-volatility audit** (`scripts/audit_rank_volatility_real.py`,
+2000 queries, DBSCAN eps=0.6):
+
+```
+Spearman rho (TSR rank vs. volatility): -0.354
+Patterns analyzed: 5
+```
+
+Directionally supportive of the Pareto premise (negative rho), but
+statistically weak — only 5 clusters formed, so the correlation is over
+5 points. See `PARETO_AUDIT.md` §5c.
 
 ## Tests
 

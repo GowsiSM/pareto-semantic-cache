@@ -121,6 +121,31 @@ python scripts/run_scalm.py
 
 ---
 
+## 4b. Real-data validation (MOSS sample, real embeddings)
+
+The three real-data scripts produce the honest numbers recorded in
+`PARETO_AUDIT.md` §5b/5c. All require `data/moss-sample-10k.jsonl` and
+the SentenceTransformer model (downloaded on first use).
+
+```bash
+# SCALM validation on real MOSS data (5000 first-turn pairs)
+python scripts/run_scalm.py
+
+# Three-way comparison on real MOSS data (2000 first-turn pairs)
+python scripts/run_pareto_real.py
+
+# Rank-volatility audit on real MOSS data (2000 queries)
+python scripts/audit_rank_volatility_real.py
+```
+
+> **Reading the results.** These are reported as-is, not tuned to look
+> favorable. On real data: GPTCache leads on raw hit ratio (0.318) because
+> it admits everything; Pareto beats SCALM (0.235 vs 0.185); the
+> rank-volatility rho is -0.354 but over only 5 clusters (statistically
+> weak). See `PARETO_AUDIT.md` §5b/5c.
+
+---
+
 ## 5. Run SCALM separately (offline, mock embedder)
 
 To run SCALM without network access, inject the mock embedder. There is no

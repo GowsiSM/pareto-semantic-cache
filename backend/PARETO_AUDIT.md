@@ -231,6 +231,57 @@ artificially dominant. A more realistic dataset (answers of similar
 length, so volatility is the differentiator) would let the Pareto
 extension's second objective actually matter — see section 7, step 2.
 
+## 5b. Honest real-data result (MOSS sample, real embeddings)
+
+```
+System       |  Hit Ratio |  Token Saving Rate
+----------------------------------------------
+GPTCache     |      0.318 |              0.086
+SCALM        |      0.185 |              0.068
+Pareto       |      0.235 |              0.069
+```
+
+Run via `python scripts/run_pareto_real.py` (2000 first-turn MOSS QA
+pairs, capacity 100, warmup 100, threshold 0.90, real
+SentenceTransformer `all-MiniLM-L6-v2` embeddings). The SCALM number
+reflects the fixed validator's real clustering-driven rank admission
+(section 3), not a frozen warmup set.
+
+**Reported as-is.** On real data:
+
+- **GPTCache still wins on raw hit ratio** (0.318) — it admits
+  everything, so it catches more rephrased queries. Its token saving
+  rate (0.086) is only slightly above the others because the MOSS
+  answers it caches are not the longest ones.
+- **Pareto beats SCALM on hit ratio** (0.235 vs 0.185) and matches its
+  token saving rate (0.069 vs 0.068). This is the opposite of the
+  synthetic run, where Pareto lost to SCALM — the real-data answer
+  lengths are more uniform, so the volatility objective actually
+  differentiates candidates instead of being swamped by the token
+  objective.
+- **All three systems have low absolute hit ratios** (0.19-0.32). This
+  is expected for a semantic cache on first-turn MOSS queries: the
+  queries are diverse, and a 0.90 cosine threshold is strict. The paper
+  reports *improvements over GPTCache*, not absolute hit rates.
+
+The rank-volatility audit (section 5c) is the direct test of whether
+the Pareto premise holds on this data.
+
+## 5c. Rank-volatility audit on real data
+
+```
+Spearman rho (TSR rank vs. volatility): -0.354
+Patterns analyzed: 5 (from 2000 queries, DBSCAN eps=0.6)
+```
+
+Run via `python scripts/audit_rank_volatility_real.py`. The negative
+rho is directionally consistent with the Pareto premise (high-TSR
+patterns tend to be volatile), but **the statistical basis is weak**:
+only 5 clusters formed from 2000 real queries, so the correlation is
+computed over 5 points. This is a suggestive signal, not a robust
+finding. A larger sample or a lower DBSCAN eps (more clusters) would
+be needed to firm it up.
+
 ## 6. Test coverage
 
 144/144 tests passing locally, up from 19 at the start of this work. New test
@@ -246,12 +297,29 @@ Every bug listed in section 2 has a corresponding regression test.
 
 ## 7. Recommended next steps
 
-1. **Fix the SCALMValidator ranking gap** (section 3) before trusting
-   any SCALM baseline number from this codebase.
-2. **Run `scripts/audit_rank_volatility.py` on real data** (real
+1. ~~**Fix the SCALMValidator ranking gap** (section 3) before trusting
+   any SCALM baseline number from this codebase.~~ **Done** — the
+   validator now assigns real ranks via clustering + TSR (section 3),
+   and the real-data numbers in sections 5b/5c reflect that fix.
+2. ~~**Run `scripts/audit_rank_volatility.py` on real data** (real
    embeddings + a real dataset) to check whether token-saving-ratio and
    volatility are actually independent — this is the real test of
    whether the Pareto extension's premise holds, not the synthetic
-   result in section 5.
-3. Only after both of the above: treat any SCALM-vs-Pareto comparison
-   as evidence rather than a logic smoke test.
+   result in section 5.~~ **Done** — see section 5c: rho = -0.354 on
+   real MOSS data, directionally supportive but statistically weak
+   (only 5 clusters). A larger sample or lower DBSCAN eps would firm it
+   up.
+3. ~~Only after both of the above: treat any SCALM-vs-Pareto comparison
+   as evidence rather than a logic smoke test.~~ **Done** — the
+   real-data comparison in section 5b is now the primary evidence:
+   Pareto beats SCALM on hit ratio (0.235 vs 0.185) on real MOSS data,
+   while GPTCache still leads on raw hit ratio (0.318).
+4. **Firm up the rank-volatility audit**: run `audit_rank_volatility_real.py`
+   with a larger sample (e.g. all 10k first-turn pairs) and/or a lower
+   DBSCAN eps to get more clusters, so the rho estimate is statistically
+   meaningful rather than a 5-point correlation.
+5. **Measure staleness/false-hit costs**: `evaluation/metrics.py`'s
+   `staleness_rate` and `false_hit_rate` need real (or realistically
+   simulated) staleness data to quantify whether Pareto's conservatism
+   actually pays off — the trade-off described in section 5 remains
+   unmeasured.

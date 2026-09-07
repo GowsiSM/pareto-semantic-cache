@@ -176,5 +176,16 @@ understood as "the mechanism exists and its logic is internally
 tested," not "the mechanism has been shown to improve anything over
 SCALM on real data."
 
-All six items are now resolved (items 1-3 remain open as real-data
-validation work, not design decisions).
+All six items are now resolved (items 1-3 were completed as real-data
+validation work on 2026-09-07; see `PARETO_AUDIT.md` sections 5b/5c for
+the honest numbers):
+
+1. `scripts/audit_rank_volatility_real.py` was run on real MOSS data:
+   Spearman rho = -0.354 (5 clusters from 2000 queries) — directionally
+   supportive of the premise, statistically weak.
+2. The SCALMValidator frozen-after-warmup bug is fixed (see
+   `PARETO_AUDIT.md` §3), so the SCALM baseline exercises its real
+   rank-based mechanism.
+3. `scripts/run_pareto_real.py` was run on real MOSS data: GPTCache
+   0.318 / SCALM 0.185 / Pareto 0.235 hit ratio. Pareto beats SCALM on
+   real data; GPTCache still leads on raw hit ratio. Reported as-is.

@@ -92,13 +92,14 @@ flowchart TD
 
 | Component | Status |
 |---|---|
-| SCALM baseline (clustering, admission, eviction) | ✅ Implemented — ⚠️ known bug: cache freezes post-warmup, see `PARETO_AUDIT.md` §3 |
+| SCALM baseline (clustering, admission, eviction) | ✅ Implemented — freeze bug fixed, real rank-based admission (see `PARETO_AUDIT.md` §3) |
 | GPTCache flat baseline | ✅ Implemented (rewritten from a broken exact-match version) |
 | Pareto dominance, frontier, hypervolume pruning | ✅ Implemented and tested |
 | `ParetoCache` (admission + eviction) | ✅ Implemented |
 | Volatility / domain classifiers | ✅ Implemented, bug-fixed |
-| Rank-volatility correlation audit | ✅ Implemented — **not yet run on real data** |
-| Real-dataset validation (MOSS/LMSYS) | ⏳ Requires network access outside this environment |
+| Rank-volatility correlation audit | ✅ Implemented — **run on real MOSS data**: rho = -0.354 (5 clusters, statistically weak), see `PARETO_AUDIT.md` §5c |
+| Real-dataset validation (MOSS) | ✅ Done — SCALM 23.78% hit rate; three-way comparison GPTCache 0.318 / SCALM 0.185 / Pareto 0.235 (see `PARETO_AUDIT.md` §5b) |
+| Real-dataset validation (LMSYS) | ⏳ Loader fixed + tested; full LMSYS dataset not present locally |
 | Latency / correctness as objectives | ❌ Not implemented — current objectives are token savings + volatility only |
 
 ## Getting Started

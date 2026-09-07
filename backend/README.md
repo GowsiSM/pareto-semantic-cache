@@ -89,8 +89,9 @@ minimizing-convention vector `(-token_saving_proxy, volatility)`:
 | Pareto dominance, frontier, hypervolume | Implemented and tested |
 | `ParetoCache` admission + eviction | Implemented |
 | Volatility / domain classifiers | Implemented, bug-fixed (word-level matching) |
-| Rank-volatility correlation audit | Implemented — **not yet run on real data** |
-| Real-dataset validation (MOSS/LMSYS) | Requires network access |
+| Rank-volatility correlation audit | Implemented — **run on real MOSS data**: rho = -0.354 (5 clusters, statistically weak), see `PARETO_AUDIT.md` §5c |
+| Real-dataset validation (MOSS) | Done — SCALM 23.78% hit rate; three-way comparison GPTCache 0.318 / SCALM 0.185 / Pareto 0.235 (see `PARETO_AUDIT.md` §5b) |
+| Real-dataset validation (LMSYS) | Loader fixed + tested; full LMSYS dataset not present locally |
 | Latency / correctness as objectives | Not implemented |
 
 ## Running
