@@ -85,7 +85,7 @@ minimizing-convention vector `(-token_saving_proxy, volatility)`:
 
 | Component | Status |
 |---|---|
-| SCALM baseline (clustering, admission, eviction) | Implemented — ⚠️ known bug: cache freezes post-warmup (see `PARETO_AUDIT.md` §3) |
+| SCALM baseline (clustering, admission, eviction) | Implemented — freeze bug fixed (see `PARETO_AUDIT.md` §3) |
 | GPTCache flat baseline | Implemented (rewritten from a broken exact-match version) |
 | Pareto dominance, frontier, hypervolume | Implemented and tested |
 | `ParetoCache` admission + eviction | Implemented |

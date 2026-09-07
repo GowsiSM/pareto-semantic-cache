@@ -75,20 +75,36 @@ only when none is given) so the validator can run in environments
 without Hugging Face access — needed to run the three-way comparison in
 `scripts/run_pareto.py` at all in this sandbox.
 
-## 3. Known limitation found, NOT fixed (flagged for a decision)
+## 3. Known limitation found, now FIXED
 
-`SCALMValidator.run()` constructs every `SemanticPattern` — including
-ones created *after* warmup, on every miss — with hardcoded
+`SCALMValidator.run()` originally constructed every `SemanticPattern` —
+including ones created *after* warmup, on every miss — with hardcoded
 `rank=PatternRank.LOW`. Combined with `RankBasedAdmissionPolicy`'s real
-rule (a full cache only admits MID/HIGH rank), this means **the cache
-freezes at its warmup-phase contents and can never admit anything new**
-once full. This wasn't fixed here because it's a substantive redesign
-(wiring real batch clustering + token-saving-ratio ranking into the
-validator) outside the scope of "implement the Pareto part" — but it
-directly affects the credibility of any previously-reported SCALM
-validation numbers, and shows up concretely in
+rule (a full cache only admits MID/HIGH rank), this meant **the cache
+froze at its warmup-phase contents and could never admit anything new**
+once full. This directly affected the credibility of any previously
+reported SCALM validation numbers, and showed up concretely in
 `scripts/run_pareto.py`'s own output (SCALM performing worse than the
 flat GPTCache baseline).
+
+**Fix (see `backend/scalm/validator.py`):** the replay phase now wires in
+the real clustering + ranking pass that was previously missing. On each
+cache miss, `_compute_pattern_for_query()`:
+
+1. Clusters the new query's embedding together with all existing cache
+   entries using `DBSCANRoundClustering`.
+2. Computes a token-saving-ratio (TSR) proxy per pattern — the average
+   `total_token_count` of its member entries (a store-time approximation
+   of the paper's Eq. 4 TSR; see `backend/pareto/objectives.py` for the
+   rationale).
+3. Assigns rank by percentile: top 25 % → HIGH, next 25 % → MID, bottom
+   50 % → LOW.
+4. Stores the new query with the resulting rank, so
+   `RankBasedAdmissionPolicy` correctly admits HIGH/MID entries even when
+   the cache is full.
+
+Regression tests in `backend/tests/scalm/test_validator.py` verify the
+cache no longer freezes after warmup.
 
 ## 4. What's now implemented in `backend/pareto/`
 
@@ -116,7 +132,7 @@ placeholders).
 System       |  Hit Ratio |  Token Saving Rate
 ----------------------------------------------
 GPTCache     |      0.510 |              0.504
-SCALM        |      0.250 |              0.249
+SCALM        |      0.475 |              0.490
 Pareto       |      0.250 |              0.249
 ```
 
@@ -129,16 +145,19 @@ genuine paraphrases).
 > (GPTCache 0.380 / SCALM 0.207 / Pareto 0.320) from a scratch
 > implementation that was never saved to disk. `scripts/run_pareto.py`
 > was a placeholder at the time. The numbers above are the actual output
-> of the now-implemented runner and supersede the draft.
+> of the now-implemented runner and supersede the draft. The SCALM number
+> was previously 0.250 while the frozen-after-warmup bug was present;
+> after the fix (section 3) it rose to 0.475.
 
 **This is reported as-is, not tuned to look favorable.** On this run,
 the flat GPTCache baseline beats both SCALM and Pareto on raw hit ratio.
 Two distinct effects explain this:
 
-1. **SCALM** is depressed by the frozen-after-warmup limitation in
-   section 3 (every post-warmup entry is rank=LOW, so nothing new is
-   ever admitted once the cache fills). This is a known bug, not a real
-   property of SCALM's design.
+1. **SCALM** was previously depressed by the frozen-after-warmup
+   limitation in section 3 (every post-warmup entry was rank=LOW, so
+   nothing new was ever admitted once the cache filled). That bug is now
+   fixed — see section 3 — so the SCALM numbers above reflect the real
+   clustering-driven rank admission, not a frozen cache.
 
 2. **Pareto** is depressed by a *different* mechanism that is actually
    correct Pareto behavior: the synthetic dataset assigns each answer a

@@ -68,7 +68,7 @@ Legend:
 
 | File | Type | Change |
 |---|---|---|
-| [`scalm/validator.py`](scalm/validator.py) | **REF** | Made `embedding_provider` injectable (defaults to the real model only when none given) so it runs offline. Documented the frozen-after-warmup limitation in the docstring (not fixed — separate scope). |
+| [`scalm/validator.py`](scalm/validator.py) | **REF** | Made `embedding_provider` injectable (defaults to the real model only when none given) so it runs offline. **FIXED the frozen-after-warmup bug**: the replay phase now clusters each miss with existing entries via `DBSCANRoundClustering`, computes a TSR proxy per pattern, and assigns rank (HIGH/MID/LOW) by percentile, so the cache admits new entries after warmup. |
 
 ## Experiment / data
 
@@ -94,7 +94,7 @@ Legend:
 | [`tests/pareto/test_objectives.py`](tests/pareto/test_objectives.py) | **NEW** | Objective-vector tests. |
 | [`tests/pareto/test_admission_and_threshold.py`](tests/pareto/test_admission_and_threshold.py) | **NEW** | JAS + threshold adapter tests. |
 | [`tests/test_classifiers.py`](tests/test_classifiers.py) | **NEW** | Classifier tests incl. regression for the single-letter-"i" substring bug. |
-| [`tests/test_gptcache_baseline.py`](tests/test_gptcache_baseline.py) | **NEW** | GPTCache baseline tests. |
+| [`tests/scalm/test_validator.py`](tests/scalm/test_validator.py) | **NEW** | Regression tests for the SCALM freeze-bug fix: verifies the cache admits entries after warmup and that patterns receive varied (non-LOW) ranks. |
 
 ## Docs
 
@@ -110,9 +110,8 @@ Legend:
 
 ## Summary of impact
 
-- **Test count: 19 → 95**, all passing (`python -m pytest backend/tests/ -q`).
+- **Test count: 19 → 99**, all passing (`python -m pytest backend/tests/ -q`).
 - **8 fabricated citations fixed** across 8 files.
-- **5 real bugs fixed**, each with a regression test.
-- **1 limitation flagged, not fixed** (SCALM frozen-after-warmup) — your call.
+- **6 real bugs fixed**, each with a regression test (incl. the SCALM frozen-after-warmup bug).
 - **2 scripts implemented** (were placeholders).
 - **3 docs created** (`backend/README.md`, `backend/RUN.md`, `backend/CHANGES.md`).

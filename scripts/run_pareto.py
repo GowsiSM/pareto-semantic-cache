@@ -7,14 +7,11 @@ so it works in a network-less sandbox. Mirrors run_scalm.py's structure
 (sectioned output, same metric names) so the three systems can be diffed
 directly.
 
-NOTE on the SCALM result: SCALMValidator assigns every post-warmup entry
-rank=PatternRank.LOW, and RankBasedAdmissionPolicy rejects LOW-rank
-candidates once the cache is full. So SCALM's cache freezes at the warmup
-set and its hit rate reflects only how often later queries match that
-fixed set -- NOT SCALM's real clustering/ranking mechanism. Treat SCALM's
-number here as a lower bound / known-buggy baseline, not a faithful
-reproduction. See backend/scalm/validator.py docstring and
-backend/PARETO_AUDIT.md for details.
+NOTE on the SCALM result: SCALMValidator now assigns real ranks
+(HIGH/MID/LOW) to post-warmup entries via clustering + token-saving-ratio
+ranking, so its cache admits new entries even after warmup. The earlier
+frozen-after-warmup bug is fixed. See backend/scalm/validator.py and
+backend/PARETO_AUDIT.md §3 for details.
 """
 
 from __future__ import annotations
@@ -155,8 +152,9 @@ def main() -> None:
     print("GPTCache (flat baseline) often wins on raw hit ratio here because")
     print("it admits everything; Pareto is more conservative (rejects dominated")
     print("candidates), which trades raw hit ratio for lower false-hit risk.")
-    print("SCALM's number is depressed by the frozen-after-warmup bug -- see")
-    print("the module docstring and backend/PARETO_AUDIT.md before interpreting it.")
+    print("SCALM's number reflects its real clustering-driven rank admission")
+    print("(the earlier frozen-after-warmup bug is fixed -- see the module")
+    print("docstring and backend/PARETO_AUDIT.md §3).")
 
 
 if __name__ == "__main__":

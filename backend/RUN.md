@@ -66,10 +66,10 @@ saving rate, then an interpretation block.
 
 > **Reading the results.** The flat GPTCache baseline often wins on raw
 > hit ratio here because it admits everything. Pareto is more conservative
-> (rejects dominated candidates). SCALM's number is depressed by the
-> frozen-after-warmup bug — see `backend/PARETO_AUDIT.md` §3 before
-> interpreting it. These are **logic smoke tests**, not real-world
-> benchmarks.
+> (rejects dominated candidates). SCALM's number reflects its real
+> clustering-driven rank admission (the earlier frozen-after-warmup bug is
+> fixed — see `backend/PARETO_AUDIT.md` §3). These are **logic smoke
+> tests**, not real-world benchmarks.
 
 ---
 
@@ -100,11 +100,10 @@ python scripts/run_scalm.py
 > If the sample file is missing, generate it first:
 > `python scripts/extract_sample.py`
 
-> **Known limitation.** `SCALMValidator` assigns every post-warmup entry
-> `rank=LOW`, so once the cache fills during warmup it never admits
-> anything new. The reported hit rate reflects how often later queries
-> match the frozen warmup set, **not** SCALM's real clustering/ranking
-> mechanism. See `backend/PARETO_AUDIT.md` §3.
+> **Note.** `SCALMValidator` now assigns real ranks (HIGH/MID/LOW) to
+> post-warmup entries via clustering + token-saving-ratio ranking, so the
+> cache admits new entries even after warmup. See
+> `backend/PARETO_AUDIT.md` §3.
 
 ---
 
