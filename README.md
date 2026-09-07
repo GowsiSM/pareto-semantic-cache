@@ -62,7 +62,6 @@ flowchart TD
 │   ├── experiment/{lmsys_loader,moss_loader,synthetic_dataset}.py
 │   ├── interfaces/protocols.py
 │   ├── pareto/
-│   │   ├── admission.py       # JAS scalar score
 │   │   ├── cache.py           # ParetoCache orchestrator
 │   │   ├── dominance.py       # Pareto dominance + frontier
 │   │   ├── frontier.py        # capacity-aware frontier selection
@@ -71,7 +70,7 @@ flowchart TD
 │   │   ├── threshold.py       # adaptive similarity threshold
 │   │   └── validator.py       # ParetoValidator
 │   ├── scalm/{clustering,validator}.py
-│   ├── tests/                 # 115 tests: unit + regression + e2e
+│   ├── tests/                 # 109 tests: unit + regression + e2e
 │   └── vector_store/{faiss_store,in_memory}.py
 ├── frontend/                  # demo UI (unchanged in this update)
 ├── scripts/

@@ -15,7 +15,7 @@ domain-threshold content anywhere in it):
 
 | File | False claim | Fix |
 |---|---|---|
-| `pareto/admission.py` | "the paper defines JAS... Section V-B" | Relabeled as this project's own proposed extension |
+| `pareto/admission.py` | "the paper defines JAS... Section V-B" | Relabeled as this project's own proposed extension; **file later removed entirely** (dead code — see §4 note) |
 | `pareto/threshold.py` | "Section V-D domain-aware threshold adaptation" | Relabeled as project's own extension |
 | `classifier/volatility_classifier.py` | "Section IV-B and V-B... volatility signal" | Relabeled as project's own extension |
 | `classifier/domain_classifier.py` | "the paper's Section V-D domain buckets" | Relabeled as project's own extension |
@@ -147,10 +147,14 @@ cache no longer freezes after warmup.
 | `dominance.py` | Pareto dominance check + frontier computation (pre-existing, verified correct via tests) |
 | `hypervolume.py` | 2D hypervolume contribution + capacity-constrained frontier pruning (new) |
 | `frontier.py` | Extended with `select_frontier_within_capacity`, combining dominance + hypervolume pruning |
-| `admission.py` | JAS scalar score (pre-existing, relabeled) — documented as a secondary/cold-start signal, not the primary admission mechanism |
 | `threshold.py` | Domain+volatility-adaptive similarity threshold (pre-existing, relabeled) |
 | `cache.py` | **New**: `ParetoCache` orchestrator — the actual multi-objective cache, using Pareto dominance for admission and hypervolume contribution for eviction |
 | `validator.py` | **New**: `ParetoValidator.run()`, implementing what was previously a `NotImplementedError` stub |
+
+Note: `admission.py` (the JAS scalar score) was **removed** — it was dead
+code (never called by `ParetoCache`) and its weighted-sum formula
+contradicted the multi-objective premise. Cold-start admission is
+unconditional by design; see `PARETO_DESIGN.md` §4.
 
 Plus: `classifier/volatility_classifier.py` and
 `classifier/domain_classifier.py` (bug-fixed), `baselines/gptcache.py`
@@ -221,9 +225,9 @@ extension's second objective actually matter — see section 7, step 2.
 
 ## 6. Test coverage
 
-115/115 tests passing, up from 19 at the start of this work. New test
+109/109 tests passing, up from 19 at the start of this work. New test
 files: `test_dominance_and_frontier.py`, `test_hypervolume.py`,
-`test_admission_and_threshold.py`, `test_objectives.py`, `test_cache.py`,
+`test_threshold.py`, `test_objectives.py`, `test_cache.py`,
 `test_validator.py`, `test_classifiers.py`, `test_gptcache_baseline.py`,
 `test_lmsys_loader.py`.
 Every bug listed in section 2 has a corresponding regression test.

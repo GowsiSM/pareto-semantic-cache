@@ -90,26 +90,27 @@ is a legitimate, scoped-down research question. It should be stated as
 such, not silently presented as the original four-objective plan having
 been "completed."
 
-## 4. What JAS (Joint Admission Score) is actually for, and why it's currently unused
+## 4. JAS (Joint Admission Score) was removed — cold-start is unconditional by design
 
 `pareto/admission.py`'s `JointAdmissionScore` (`TSR × (1 − α·volatility)`)
-is a weighted score — exactly the single-number collapsing described in
-§2 as the thing Pareto is supposed to avoid. It was implemented as a
-**secondary, cold-start signal**: early in a cache's life, there aren't
-enough entries to compute a meaningful frontier (a frontier of 1-2
-points is not informative), so a simple weighted score is a reasonable
-fallback for "is this worth admitting at all" before the frontier
-machinery has anything to compare against.
+was a weighted score — exactly the single-number collapsing described in
+§2 as the thing Pareto is supposed to avoid. It was originally
+implemented as a **secondary, cold-start signal**: early in a cache's
+life, there aren't enough entries to compute a meaningful frontier (a
+frontier of 1-2 points is not informative), so a simple weighted score
+seemed like a reasonable fallback for "is this worth admitting at all"
+before the frontier machinery has anything to compare against.
 
-**This is currently not wired into `ParetoCache` at all.** The cache
-either admits unconditionally (cold, not-yet-full) or uses pure
-dominance (full). JAS exists, is tested in isolation, and does nothing
-in the actual running system. This needs one of two resolutions:
-(a) wire it in for the cold-start case as originally intended, or
-(b) remove it and document that cold-start uses unconditional admission
-by design, matching SCALM's own cold-start behavior. Leaving it
-unwired-but-present is the worst of both — it reads as functionality
-that doesn't exist.
+**Resolution: JAS was removed.** It was never wired into `ParetoCache`,
+and wiring it in would have reintroduced the exact single-objective
+collapsing the Pareto approach exists to avoid. Cold-start admission is
+**unconditional by design**, matching SCALM's own cold-start behavior:
+with an empty or sparse cache there is no basis for comparison, so every
+candidate is admitted until the cache is full, at which point pure
+Pareto dominance takes over. The `JointAdmissionScore` class, its
+isolated tests, and `pareto/admission.py` itself were deleted; the
+cold-start rationale is documented in `pareto/cache.py`'s module
+docstring.
 
 ## 5. The actual test of whether any of this is worth having
 
@@ -146,7 +147,9 @@ Not "does it run," but:
    real dataset, both bugs above fixed) and the SCALM-vs-Pareto
    comparison is reported as-is — including if Pareto loses on some
    metric, as it did in the synthetic run.
-4. JAS's role is resolved one way or the other (§4), not left ambiguous.
+4. ~~JAS's role is resolved one way or the other (§4), not left
+   ambiguous.~~ **Resolved: JAS was removed** (§4) — cold-start admission
+   is unconditional by design, matching SCALM.
 5. A decision is made and documented on whether `ParetoCache` should use
    SCALM's clustering (currently it evaluates every query independently,
    with no semantic pattern grouping at all — meaning it forgoes the

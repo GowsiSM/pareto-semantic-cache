@@ -31,7 +31,7 @@ Requirements: `scikit-learn`, `pytest`, `numpy`, `sentence-transformers`,
 ## 1. Verify the test suite
 
 ```bash
-# Full suite (115 tests)
+# Full suite (109 tests)
 python -m pytest backend/tests/ -q
 
 # Verbose, with per-test names
@@ -53,7 +53,7 @@ python -m pytest backend/tests/test_vector_store.py -q
 python -m pytest backend/tests/test_lmsys_loader.py -q
 ```
 
-Expected: **115 passed**.
+Expected: **109 passed**.
 
 ---
 

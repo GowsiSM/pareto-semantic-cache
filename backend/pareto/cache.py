@@ -19,7 +19,11 @@ in an experiment harness:
   store():
     - Cold cache (not yet full): admit unconditionally, matching SCALM's
       own cold-start behavior -- there's no basis for Pareto comparison
-      with an empty/sparse cache.
+      with an empty/sparse cache. (A weighted admission score like JAS
+      was considered for this phase but deliberately NOT used: it
+      collapses the two objectives back into one number, which is the
+      single-objective ranking the Pareto approach exists to avoid. See
+      PARETO_DESIGN.md section 4.)
     - Full cache: compute the candidate's objective vector, add it to the
       existing entries' objective vectors, and compute the Pareto
       frontier of that combined set. If the candidate is NOT in the

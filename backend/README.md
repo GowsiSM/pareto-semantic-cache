@@ -36,7 +36,6 @@ backend/
 │   └── synthetic_dataset.py         # offline synthetic QA generator
 ├── interfaces/protocols.py          # EmbeddingProvider/VectorStore/TokenCounter
 ├── pareto/
-│   ├── admission.py                 # JAS scalar score (secondary/cold-start signal)
 │   ├── cache.py                     # ParetoCache orchestrator
 │   ├── dominance.py                 # Pareto dominance + frontier
 │   ├── frontier.py                  # capacity-aware frontier selection
@@ -47,7 +46,7 @@ backend/
 ├── scalm/
 │   ├── clustering.py                # DBSCANRoundClustering
 │   └── validator.py                 # SCALMValidator
-├── tests/                           # 115 tests (unit + regression + e2e)
+├── tests/                           # 109 tests (unit + regression + e2e)
 └── vector_store/
     ├── faiss_store.py               # FAISS-backed store
     └── in_memory.py                 # InMemoryVectorStore (cosine)

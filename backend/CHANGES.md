@@ -27,7 +27,7 @@ Legend:
 
 | File | Type | Change |
 |---|---|---|
-| [`pareto/admission.py`](pareto/admission.py) | **CITE** | Removed false "Section V-B defines JAS" citation; relabeled JAS as this project's own extension. |
+| [`pareto/admission.py`](pareto/admission.py) | **CITE + REMOVED** | Removed false "Section V-B defines JAS" citation; relabeled JAS as this project's own extension. **File later deleted entirely**: `JointAdmissionScore` was dead code (never called by `ParetoCache`) and its weighted-sum formula contradicted the multi-objective premise. Cold-start admission is unconditional by design — see `PARETO_DESIGN.md` §4. |
 | [`pareto/threshold.py`](pareto/threshold.py) | **CITE** | Removed false "Section V-D domain-aware threshold adaptation" citation; relabeled as project's own extension. |
 | [`pareto/frontier.py`](pareto/frontier.py) | **IMPL** | Added `select_frontier_within_capacity` (dominance + hypervolume pruning). |
 
@@ -100,7 +100,8 @@ Legend:
 | [`tests/pareto/test_hypervolume.py`](tests/pareto/test_hypervolume.py) | **NEW** | Hypervolume tests incl. reference-point validation. |
 | [`tests/pareto/test_dominance_and_frontier.py`](tests/pareto/test_dominance_and_frontier.py) | **NEW** | Dominance + frontier tests. |
 | [`tests/pareto/test_objectives.py`](tests/pareto/test_objectives.py) | **NEW** | Objective-vector tests. |
-| [`tests/pareto/test_admission_and_threshold.py`](tests/pareto/test_admission_and_threshold.py) | **NEW** | JAS + threshold adapter tests. |
+| [`tests/pareto/test_admission_and_threshold.py`](tests/pareto/test_admission_and_threshold.py) | **NEW → REMOVED** | JAS + threshold adapter tests. JAS tests removed with the dead code; threshold tests moved to `tests/pareto/test_threshold.py`. |
+| [`tests/pareto/test_threshold.py`](tests/pareto/test_threshold.py) | **NEW** | Threshold adapter tests (moved from `test_admission_and_threshold.py` after JAS removal). |
 | [`tests/test_classifiers.py`](tests/test_classifiers.py) | **NEW** | Classifier tests incl. regression for the single-letter-"i" substring bug. |
 | [`tests/scalm/test_validator.py`](tests/scalm/test_validator.py) | **NEW** | Regression tests for the SCALM freeze-bug fix: verifies the cache admits entries after warmup and that patterns receive varied (non-LOW) ranks. |
 | [`tests/test_vector_store.py`](tests/test_vector_store.py) | **NEW** | FAISSVectorStore regression tests for the silent-corruption bug: search-after-remove returns the correct entry, multiple removes, remove-then-add, remove-nonexistent, remove-all, get/all_entries consistency. |
@@ -120,8 +121,9 @@ Legend:
 
 ## Summary of impact
 
-- **Test count: 19 → 115**, all passing (`python -m pytest backend/tests/ -q`).
+- **Test count: 19 → 109**, all passing (`python -m pytest backend/tests/ -q`). (115 − 6 JAS tests removed with the dead code.)
 - **9 fabricated citations fixed** across 9 files (the 8 original + a leftover "Section VI" in `evaluation/metrics.py` and a "Section IV method" in `scripts/audit_rank_volatility.py`).
 - **8 real bugs fixed**, each with a regression test (incl. the SCALM frozen-after-warmup bug, the FAISS silent-corruption bug, and the LMSYS wrong-schema bug).
+- **1 dead-code module removed**: `pareto/admission.py` (JAS) — never called by `ParetoCache`; cold-start admission is unconditional by design.
 - **2 scripts implemented** (were placeholders).
 - **3 docs created** (`backend/README.md`, `backend/RUN.md`, `backend/CHANGES.md`).
