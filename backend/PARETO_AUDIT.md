@@ -87,6 +87,24 @@ with stable external IDs and using FAISS's native `remove_ids` (no
 rebuild), so search results always map to the correct entry. Caught by
 `test_vector_store.py::TestFAISSVectorStore::test_search_after_remove_returns_correct_entry`.
 
+### 2.7 `LMSYSLoader` guessed the wrong dataset schema
+`experiment/lmsys_loader.py` was a placeholder that guessed a MOSS-style
+schema — it looked for `chat`/`messages` keys and `Human`/`MOSS` message
+keys. The real **LMSYS-Chat-1M** schema is different: each row has a
+top-level `conversation` field that is a list of OpenAI-chat-format
+messages with `role` and `content` keys, plus `conversation_id`, `model`,
+`turn`, `language`, `openai_moderation`, and `redacted` metadata. Because
+the loader guessed, it would silently return zero QA pairs on real LMSYS
+data, blocking any LMSYS-based experiment.
+
+**Fix (see `backend/experiment/lmsys_loader.py`):** the loader now reads
+the real schema. It validates each row on load (skips and reports rows
+missing the `conversation` key or any message's `role`/`content`), and
+extracts first-turn and all-turn QA pairs from `role`/`content`. It also
+reports per-model and per-language stats. Regression tests in
+`backend/tests/test_lmsys_loader.py` verify the real schema loads, the
+old guessed schema is rejected, and malformed rows are skipped.
+
 ## 3. Known limitation found, now FIXED
 
 `SCALMValidator.run()` originally constructed every `SemanticPattern` —
@@ -200,10 +218,11 @@ extension's second objective actually matter — see section 7, step 2.
 
 ## 6. Test coverage
 
-95/106 tests passing, up from 19 at the start of this work. New test
+115/115 tests passing, up from 19 at the start of this work. New test
 files: `test_dominance_and_frontier.py`, `test_hypervolume.py`,
 `test_admission_and_threshold.py`, `test_objectives.py`, `test_cache.py`,
-`test_validator.py`, `test_classifiers.py`, `test_gptcache_baseline.py`.
+`test_validator.py`, `test_classifiers.py`, `test_gptcache_baseline.py`,
+`test_lmsys_loader.py`.
 Every bug listed in section 2 has a corresponding regression test.
 
 ## 7. Recommended next steps

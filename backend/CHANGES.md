@@ -81,6 +81,7 @@ Legend:
 | File | Type | Change |
 |---|---|---|
 | [`experiment/synthetic_dataset.py`](experiment/synthetic_dataset.py) | **NEW** | Offline synthetic QA generator (8 topics, 4 stable + 4 volatile, controlled reuse rate) for sandbox-runnable validation. |
+| [`experiment/lmsys_loader.py`](experiment/lmsys_loader.py) | **FIX** | **Fixed wrong-schema guessing**: the loader previously assumed a MOSS-style schema (`chat`/`messages` with `Human`/`MOSS` keys). The real LMSYS-Chat-1M schema uses an OpenAI chat format — a top-level `conversation` list of messages with `role`/`content` keys (plus `model`, `turn`, `language`, `openai_moderation`, `redacted`). Now validates the schema on load (skips and reports malformed rows), extracts first-turn and all-turn QA pairs from `role`/`content`, and reports per-model/per-language stats. |
 
 ## Scripts
 
@@ -102,6 +103,7 @@ Legend:
 | [`tests/test_classifiers.py`](tests/test_classifiers.py) | **NEW** | Classifier tests incl. regression for the single-letter-"i" substring bug. |
 | [`tests/scalm/test_validator.py`](tests/scalm/test_validator.py) | **NEW** | Regression tests for the SCALM freeze-bug fix: verifies the cache admits entries after warmup and that patterns receive varied (non-LOW) ranks. |
 | [`tests/test_vector_store.py`](tests/test_vector_store.py) | **NEW** | FAISSVectorStore regression tests for the silent-corruption bug: search-after-remove returns the correct entry, multiple removes, remove-then-add, remove-nonexistent, remove-all, get/all_entries consistency. |
+| [`tests/test_lmsys_loader.py`](tests/test_lmsys_loader.py) | **NEW** | Regression tests for the LMSYS loader schema fix: loads the real OpenAI-chat schema, rejects the old guessed MOSS-style schema, skips malformed JSON/schema rows, respects `limit`, extracts first-turn/all-turn pairs from `role`/`content`, and reports model/language stats. |
 
 ## Docs
 
@@ -117,8 +119,8 @@ Legend:
 
 ## Summary of impact
 
-- **Test count: 19 → 106**, all passing (`python -m pytest backend/tests/ -q`).
+- **Test count: 19 → 115**, all passing (`python -m pytest backend/tests/ -q`).
 - **8 fabricated citations fixed** across 8 files.
-- **7 real bugs fixed**, each with a regression test (incl. the SCALM frozen-after-warmup bug and the FAISS silent-corruption bug).
+- **8 real bugs fixed**, each with a regression test (incl. the SCALM frozen-after-warmup bug, the FAISS silent-corruption bug, and the LMSYS wrong-schema bug).
 - **2 scripts implemented** (were placeholders).
 - **3 docs created** (`backend/README.md`, `backend/RUN.md`, `backend/CHANGES.md`).
