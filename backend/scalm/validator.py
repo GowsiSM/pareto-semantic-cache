@@ -1,9 +1,8 @@
 # backend/scalm/validator.py
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional, Any
 from backend.cache.scalm_cache import ScalmCache
 from backend.cache.admission import RankBasedAdmissionPolicy
 from backend.cache.eviction import RankSeededLFUEviction
-from backend.embedding.sentence_transformer_provider import SentenceTransformerEmbeddingProvider
 from backend.embedding.token_counter import SimpleTokenCounter
 from backend.vector_store.in_memory import InMemoryVectorStore
 from backend.scalm.clustering import DBSCANRoundClustering
@@ -13,12 +12,44 @@ class SCALMValidator:
     """
     Validate SCALM implementation against MOSS dataset.
     Reproduces the paper's experimental setup.
+
+    KNOWN LIMITATION (found during the Pareto-extension audit, not fixed
+    here since it's a separate scope of work): every store() call below
+    -- including ones AFTER the warmup phase -- constructs a
+    SemanticPattern with hardcoded rank=PatternRank.LOW. Combined with
+    RankBasedAdmissionPolicy's real rule (full cache admits only
+    MID/HIGH rank), this means once the cache fills during warmup, NO
+    further entry can ever be admitted -- the cache is effectively
+    frozen at the warmup set for the rest of the run. This means any
+    previously-reported hit rate from this validator reflects how often
+    post-warmup queries happen to match the fixed warmup set, not
+    SCALM's actual clustering-driven rank admission (which needs a real
+    batch clustering + token-saving-ratio ranking pass -- see
+    backend/scalm/clustering.py's DBSCANRoundClustering, which exists
+    but isn't wired into this validator's per-query store() calls).
+    Worth fixing before treating this validator's numbers as a faithful
+    SCALM reproduction.
     """
     
-    def __init__(self, capacity: int = 100, similarity_threshold: float = 0.90):
+    def __init__(
+        self,
+        capacity: int = 100,
+        similarity_threshold: float = 0.90,
+        embedding_provider: Optional[Any] = None,
+    ):
         self.capacity = capacity
         self.threshold = similarity_threshold
-        self.embedding_provider = SentenceTransformerEmbeddingProvider()
+        if embedding_provider is None:
+            # Only import/construct the real (network-dependent) model
+            # if the caller didn't inject one -- lets this validator run
+            # in environments without Hugging Face access, e.g. for
+            # logic validation with MockEmbeddingProvider.
+            from backend.embedding.sentence_transformer_provider import (
+                SentenceTransformerEmbeddingProvider,
+            )
+
+            embedding_provider = SentenceTransformerEmbeddingProvider()
+        self.embedding_provider = embedding_provider
         self.token_counter = SimpleTokenCounter()
         self.cache = ScalmCache(
             embedding_provider=self.embedding_provider,
