@@ -1,4 +1,12 @@
-"""Evaluation metrics used to compare No Cache, GPTCache, SCALM, and this project."""
+"""Evaluation metrics used to compare No Cache, GPTCache, SCALM, and the Pareto extension.
+
+Attribution: `cache_hit_ratio` and `token_saving_ratio` directly implement
+the SCALM paper's Eq. 3 and Eq. 4 (Li et al., 2024, section V-D). There is
+no "Section VI" in the paper defining staleness_rate, false_hit_rate, or
+admission_overhead as a combined metrics suite — those three are this
+project's own additions, needed to evaluate the volatility-aware Pareto
+extension, and are not paper-derived metrics.
+"""
 
 from __future__ import annotations
 
@@ -40,7 +48,7 @@ def compute_metrics(
     false_hits: int = 0,
     admission_overhead: float = 0.0,
 ) -> EvaluationMetrics:
-    """Compute the shared metrics used to compare the evaluated systems."""
+    """Compute the shared metrics used across all systems in Section VI."""
     total = max(total_queries, hits + misses)
     cache_hit_ratio = hits / total if total else 0.0
     token_saving_ratio = tokens_saved / total_tokens if total_tokens else 0.0

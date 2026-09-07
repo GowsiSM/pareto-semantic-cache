@@ -1,7 +1,17 @@
-"""Project-proposed adaptive threshold adapter for Pareto-style admission.
+"""Adaptive threshold adapter for Pareto semantic-cache admission.
 
-Domain-specific adjustments and volatility penalties are extensions proposed by
-this project; they are not defined by the SCALM paper.
+PROJECT-PROPOSED EXTENSION — not from the SCALM paper. The SCALM paper
+(Li et al., 2024) sets a single fixed similarity threshold (0.90, from
+its Table I analysis) and does not vary it by domain or volatility.
+"Section V-D" and "domain-aware threshold adaptation" as paper concepts
+were incorrect in an earlier version of this file.
+
+This is this project's own extension: lower the effective threshold
+(more permissive matching) for lower-volatility (safer) domains, and
+raise the effective bar (via the volatility penalty term) for queries
+classified as more volatile. The specific formula and domain adjustment
+values below are design choices made for this project, not measured or
+derived from any paper.
 """
 
 from __future__ import annotations

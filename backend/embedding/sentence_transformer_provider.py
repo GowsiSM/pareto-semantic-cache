@@ -3,8 +3,19 @@ from sentence_transformers import SentenceTransformer
 
 class SentenceTransformerEmbeddingProvider:
     """
-    Real embedding provider using Sentence Transformers.
-    Uses all-MiniLM-L6-v2 which is the same model SCALM paper uses.
+    Real, local (no API key needed) embedding provider using
+    Sentence-Transformers.
+
+    CORRECTION: an earlier version of this docstring claimed
+    all-MiniLM-L6-v2 is "the same model SCALM paper uses" -- that is
+    incorrect. The paper (Li et al., 2024, section III-A) uses OpenAI's
+    text-embedding-3-small. all-MiniLM-L6-v2 is used here as a free,
+    local, no-API-key alternative for running real experiments without
+    OpenAI API cost -- results from this provider are NOT expected to
+    exactly match the paper's reported numbers, since it's a different
+    embedding model with different (384-dim vs. OpenAI's) output space
+    and different semantic behavior. Use backend/embedding/openai_embedding.py
+    (if present) for the model the paper actually used.
     """
     
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
