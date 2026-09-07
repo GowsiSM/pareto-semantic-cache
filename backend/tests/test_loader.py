@@ -1,63 +1,63 @@
 # test_loader.py
 """
-Test the MOSS loader with the sample file.
+Real-data smoke tests for the MOSS loader.
+
+These tests exercise MOSSLoader against the actual moss-sample-10k.jsonl
+file when it is present locally. The file is gitignored (it is a large
+downloaded dataset), so the tests SKIP when it is absent — CI and fresh
+clones will skip, local runs with the data will validate.
+
+Synthetic-data unit tests for MOSSLoader live in test_moss_loader.py.
 """
 
-import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+import pytest
 
 from backend.experiment.moss_loader import MOSSLoader
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-def safe_preview(value: str, max_chars: int = 200) -> str:
-    preview = str(value)[:max_chars]
-    return preview.encode("ascii", errors="replace").decode("ascii")
+SAMPLE_CANDIDATES = [
+    PROJECT_ROOT / "data" / "moss-sample-10k.jsonl",
+    PROJECT_ROOT / "moss-sample-10k.jsonl",
+]
 
+SAMPLE_PATH = next((p for p in SAMPLE_CANDIDATES if p.exists()), SAMPLE_CANDIDATES[0])
 
-def resolve_dataset_path() -> Path:
-    candidates = [
-        PROJECT_ROOT / "data" / "moss-sample-10k.jsonl",
-        PROJECT_ROOT / "moss-sample-10k.jsonl",
-    ]
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate
-    return candidates[0]
+pytestmark = pytest.mark.skipif(
+    not SAMPLE_PATH.exists(),
+    reason="moss-sample-10k.jsonl not present (gitignored dataset)",
+)
 
 
-def main():
-    print("Testing MOSS Loader")
-    print("=" * 60)
+def test_loads_real_sample():
+    loader = MOSSLoader(str(SAMPLE_PATH))
 
-    dataset_path = resolve_dataset_path()
-    print(f"Using dataset: {dataset_path}")
-    loader = MOSSLoader(str(dataset_path))
-    print(f"\nLoaded {len(loader)} conversations")
-    
-    # Get stats
-    stats = loader.get_stats()
-    print(f"\nDataset stats:")
-    print(f"   Total conversations: {stats['total_conversations']:,}")
-    print(f"   Total turns: {stats['total_turns']:,}")
-    print(f"   Avg turns per conversation: {stats['avg_turns_per_conversation']:.1f}")
-    print(f"   Categories: {stats['categories']}")
-    
-    # Get first-turn pairs
+    assert len(loader) > 0
+
+
+def test_real_sample_extracts_first_turn_pairs():
+    loader = MOSSLoader(str(SAMPLE_PATH))
     pairs = loader.get_first_turn_pairs()
-    print(f"\nExtracted {len(pairs)} first-turn QA pairs")
-    
-    if pairs:
-        print("\nSample QA pairs (first 3):")
-        for i, (q, a) in enumerate(pairs[:3]):
-            print(f"\nPair {i+1}:")
-            print(f"  Q: {safe_preview(q, 200)}...")
-            print(f"  A: {safe_preview(a, 200)}...")
-    else:
-        print("\nNo QA pairs extracted!")
 
-if __name__ == "__main__":
-    main()
+    assert len(pairs) > 0
+    for question, answer in pairs[:5]:
+        assert question.strip()
+        assert answer.strip()
+        # Cleaned text must not retain MOSS special tokens.
+        assert "<|Human|>" not in question
+        assert "<|MOSS|>" not in answer
+        assert "<eoh>" not in question
+        assert "<eom>" not in answer
+
+
+def test_real_sample_stats_are_consistent():
+    loader = MOSSLoader(str(SAMPLE_PATH))
+    stats = loader.get_stats()
+
+    assert stats["total_conversations"] == len(loader)
+    assert stats["total_turns"] >= stats["total_conversations"]
+    assert stats["avg_turns_per_conversation"] > 0
+    assert isinstance(stats["categories"], dict)
+    assert len(stats["categories"]) > 0

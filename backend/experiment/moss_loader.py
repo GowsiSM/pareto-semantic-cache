@@ -57,12 +57,18 @@ class MOSSLoader:
         print(f"Loaded {len(self.conversations):,} conversations")
     
     def _clean_text(self, text: str) -> str:
-        """Remove special tokens like <|Human|>, <|MOSS|>, <eoh>."""
+        """Remove special tokens like <|Human|>, <|MOSS|>, <eoh>, <eom>."""
         # Remove <|Human|>: and <|MOSS|>: tags
         text = re.sub(r'<\|Human\|>:\s*', '', text)
         text = re.sub(r'<\|MOSS\|>:\s*', '', text)
-        # Remove <eoh> (end of human) tags
+        # Remove end-of-turn tags: <eoh> (end of human), <eom> (end of
+        # message), <eot> (end of thought), <eoc> (end of command),
+        # <eor> (end of result)
         text = re.sub(r'<eoh>', '', text)
+        text = re.sub(r'<eom>', '', text)
+        text = re.sub(r'<eot>', '', text)
+        text = re.sub(r'<eoc>', '', text)
+        text = re.sub(r'<eor>', '', text)
         # Remove any other special tokens
         text = re.sub(r'<\|.*?\|>', '', text)
         return text.strip()

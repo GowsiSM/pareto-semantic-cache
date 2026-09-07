@@ -233,11 +233,15 @@ extension's second objective actually matter — see section 7, step 2.
 
 ## 6. Test coverage
 
-109/109 tests passing, up from 19 at the start of this work. New test
+144/144 tests passing locally, up from 19 at the start of this work. New test
 files: `test_dominance_and_frontier.py`, `test_hypervolume.py`,
 `test_threshold.py`, `test_objectives.py`, `test_cache.py`,
 `test_validator.py`, `test_classifiers.py`, `test_gptcache_baseline.py`,
-`test_lmsys_loader.py`.
+`test_lmsys_loader.py`, `test_moss_loader.py` (17 tests), `test_metrics.py`
+(15 tests). `test_loader.py` was converted from a non-collected manual
+script into 3 real-data smoke tests guarded by `pytest.mark.skipif` (the
+gitignored `moss-sample-10k.jsonl` fixture is absent in CI, so those 3 skip
+there but run locally).
 Every bug listed in section 2 has a corresponding regression test.
 
 ## 7. Recommended next steps

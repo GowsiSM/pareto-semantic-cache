@@ -70,7 +70,7 @@ flowchart TD
 │   │   ├── threshold.py       # adaptive similarity threshold
 │   │   └── validator.py       # ParetoValidator
 │   ├── scalm/{clustering,validator}.py
-│   ├── tests/                 # 109 tests: unit + regression + e2e
+│   ├── tests/                 # 144 tests: unit + regression + e2e
 │   └── vector_store/{faiss_store,in_memory}.py
 ├── frontend/                  # demo UI (backend-aligned Pareto logic)
 ├── scripts/

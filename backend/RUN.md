@@ -31,7 +31,7 @@ Requirements: `scikit-learn`, `pytest`, `numpy`, `sentence-transformers`,
 ## 1. Verify the test suite
 
 ```bash
-# Full suite (109 tests)
+# Full suite (144 tests)
 python -m pytest backend/tests/ -q
 
 # Verbose, with per-test names
@@ -51,9 +51,17 @@ python -m pytest backend/tests/test_vector_store.py -q
 
 # Just the LMSYS loader tests (schema fix)
 python -m pytest backend/tests/test_lmsys_loader.py -q
+
+# Just the MOSS loader tests (incl. <eom> token-leak regression)
+python -m pytest backend/tests/test_moss_loader.py -q
+
+# Just the metrics tests
+python -m pytest backend/tests/test_metrics.py -q
 ```
 
-Expected: **109 passed**.
+Expected: **144 passed** locally (the 3 `test_loader.py` real-data smoke
+tests skip in CI because the gitignored `moss-sample-10k.jsonl` fixture is
+absent).
 
 ---
 

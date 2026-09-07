@@ -106,6 +106,17 @@ Legend:
 | [`tests/scalm/test_validator.py`](tests/scalm/test_validator.py) | **NEW** | Regression tests for the SCALM freeze-bug fix: verifies the cache admits entries after warmup and that patterns receive varied (non-LOW) ranks. |
 | [`tests/test_vector_store.py`](tests/test_vector_store.py) | **NEW** | FAISSVectorStore regression tests for the silent-corruption bug: search-after-remove returns the correct entry, multiple removes, remove-then-add, remove-nonexistent, remove-all, get/all_entries consistency. |
 | [`tests/test_lmsys_loader.py`](tests/test_lmsys_loader.py) | **NEW** | Regression tests for the LMSYS loader schema fix: loads the real OpenAI-chat schema, rejects the old guessed MOSS-style schema, skips malformed JSON/schema rows, respects `limit`, extracts first-turn/all-turn pairs from `role`/`content`, and reports model/language stats. |
+| [`tests/test_moss_loader.py`](tests/test_moss_loader.py) | **NEW** | 17 synthetic-data tests for `MOSSLoader` (loading, limit, malformed lines, missing file, blank lines, text cleaning, first-turn/all-turns pairs, category filter, stats, len). **Caught a real bug**: `_clean_text()` leaked `<eom>`/`<eot>`/`<eoc>`/`<eor>` tokens into extracted answers. |
+| [`tests/test_metrics.py`](tests/test_metrics.py) | **NEW** | 15 tests for `evaluation/metrics.py::compute_metrics` (hit ratio Eq. 3, token saving ratio Eq. 4, staleness rate, false hit rate, admission overhead, zero-division edge cases, `as_dict`). |
+| [`tests/test_loader.py`](tests/test_loader.py) | **REF** | Converted from a manual script (no `test_` functions, not collected) into 3 real-data smoke tests guarded by `pytest.mark.skipif` (the `moss-sample-10k.jsonl` fixture is gitignored, so they skip in CI/fresh clones but run locally). |
+
+## Bug Fix: MOSSLoader `<eom>` Token Leak
+
+**Date**: 2026-03-25
+**Severity**: Medium
+**Found by**: New `test_moss_loader.py` tests (issue 8, zero test coverage)
+
+`MOSSLoader._clean_text()` only stripped `<eoh>` tokens. The `<eom>` (end-of-message) tag — present in every MOSS answer — was never removed, leaking garbage into cached entries. Also added stripping for `<eot>`, `<eoc>`, and `<eor>` tags. Fixed in [`experiment/moss_loader.py`](experiment/moss_loader.py).
 
 ## Docs
 
@@ -128,9 +139,9 @@ Legend:
 
 ## Summary of impact
 
-- **Test count: 19 → 109**, all passing (`python -m pytest backend/tests/ -q`). (115 − 6 JAS tests removed with the dead code.)
+- **Test count: 19 → 144**, all passing locally (`python -m pytest backend/tests/ -q`). (115 − 6 JAS tests removed with the dead code; +17 MOSS loader, +15 metrics, +3 real-data smoke tests. The 3 `test_loader.py` smoke tests skip in CI because the gitignored `moss-sample-10k.jsonl` fixture is absent.)
 - **9 fabricated citations fixed** across 9 files (the 8 original + a leftover "Section VI" in `evaluation/metrics.py` and a "Section IV method" in `scripts/audit_rank_volatility.py`).
-- **8 real bugs fixed**, each with a regression test (incl. the SCALM frozen-after-warmup bug, the FAISS silent-corruption bug, and the LMSYS wrong-schema bug).
+- **9 real bugs fixed**, each with a regression test (incl. the SCALM frozen-after-warmup bug, the FAISS silent-corruption bug, the LMSYS wrong-schema bug, and the MOSS `<eom>` token-leak bug).
 - **1 dead-code module removed**: `pareto/admission.py` (JAS) — never called by `ParetoCache`; cold-start admission is unconditional by design. JAS also removed from the frontend.
 - **2 scripts implemented** (were placeholders).
 - **3 docs created** (`backend/README.md`, `backend/RUN.md`, `backend/CHANGES.md`).
