@@ -48,7 +48,12 @@ def compute_metrics(
     false_hits: int = 0,
     admission_overhead: float = 0.0,
 ) -> EvaluationMetrics:
-    """Compute the shared metrics used across all systems in Section VI."""
+    """Compute the shared evaluation metrics across all systems.
+
+    `cache_hit_ratio` and `token_saving_ratio` follow the SCALM paper's
+    Eq. 3 and Eq. 4; the remaining metrics are this project's own
+    additions (see the module docstring).
+    """
     total = max(total_queries, hits + misses)
     cache_hit_ratio = hits / total if total else 0.0
     token_saving_ratio = tokens_saved / total_tokens if total_tokens else 0.0

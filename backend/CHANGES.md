@@ -43,6 +43,7 @@ Legend:
 | File | Type | Change |
 |---|---|---|
 | [`baselines/gptcache.py`](baselines/gptcache.py) | **FIX + CITE** | Rewritten from a broken exact-string-match dict to a real semantic cache (composes `ScalmCache` + `AlwaysAdmitPolicy` + `PlainLFU`/`PlainLRU`). Removed false "Section VI-A" citation; correctly cites the paper's real section V-E. |
+| [`baselines/__init__.py`](baselines/__init__.py) | **CITE** | Removed fabricated "Section VI" reference from the module docstring. |
 
 ## Cache core
 
@@ -68,7 +69,7 @@ Legend:
 
 | File | Type | Change |
 |---|---|---|
-| [`evaluation/metrics.py`](evaluation/metrics.py) | **CITE** | Clarified that only `cache_hit_ratio`/`token_saving_ratio` are from the paper (Eq. 3/4); `staleness_rate`/`false_hit_rate`/`admission_overhead` are this project's own additions. |
+| [`evaluation/metrics.py`](evaluation/metrics.py) | **CITE** | Clarified that only `cache_hit_ratio`/`token_saving_ratio` are from the paper (Eq. 3/4); `staleness_rate`/`false_hit_rate`/`admission_overhead` are this project's own additions. Also removed a leftover fabricated "Section VI" reference from the `compute_metrics` docstring. |
 
 ## SCALM validator
 
@@ -88,7 +89,7 @@ Legend:
 | File | Type | Change |
 |---|---|---|
 | [`scripts/run_pareto.py`](scripts/run_pareto.py) | **IMPL** | Was a 13-line placeholder; now a real three-way comparison (GPTCache vs. SCALM vs. Pareto) on the synthetic dataset with the mock embedder, threshold 0.60. |
-| [`scripts/audit_rank_volatility.py`](scripts/audit_rank_volatility.py) | **IMPL** | Was a placeholder; now computes the Spearman rho between TSR rank and volatility using DBSCAN clustering + the volatility classifier on synthetic data. |
+| [`scripts/audit_rank_volatility.py`](scripts/audit_rank_volatility.py) | **IMPL + CITE** | Was a placeholder; now computes the Spearman rho between TSR rank and volatility using DBSCAN clustering + the volatility classifier on synthetic data. Also removed a leftover fabricated "Section IV method" citation from the docstring and CLI banner. |
 
 ## Tests
 
@@ -120,7 +121,7 @@ Legend:
 ## Summary of impact
 
 - **Test count: 19 → 115**, all passing (`python -m pytest backend/tests/ -q`).
-- **8 fabricated citations fixed** across 8 files.
+- **9 fabricated citations fixed** across 9 files (the 8 original + a leftover "Section VI" in `evaluation/metrics.py` and a "Section IV method" in `scripts/audit_rank_volatility.py`).
 - **8 real bugs fixed**, each with a regression test (incl. the SCALM frozen-after-warmup bug, the FAISS silent-corruption bug, and the LMSYS wrong-schema bug).
 - **2 scripts implemented** (were placeholders).
 - **3 docs created** (`backend/README.md`, `backend/RUN.md`, `backend/CHANGES.md`).

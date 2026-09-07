@@ -1,4 +1,4 @@
-"""Baseline implementations used for fair comparison in Section VI."""
+"""Baseline implementations used for fair comparison across systems."""
 
 from backend.baselines.gptcache import GPTCache
 

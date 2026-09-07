@@ -23,6 +23,9 @@ domain-threshold content anywhere in it):
 | `baselines/gptcache.py` | "matching the baseline described in Section VI-A" (no Section VI-A exists) | Relabeled; correctly cites the paper's real section V-E instead |
 | `embedding/sentence_transformer_provider.py` | "all-MiniLM-L6-v2 which is the same model SCALM paper uses" | Corrected: paper uses OpenAI `text-embedding-3-small`; MiniLM is a free local alternative here |
 | `scripts/audit_rank_volatility.py` | "using the paper's Section IV method" | Relabeled as project's own analysis; script also implemented (was a placeholder) |
+| `evaluation/metrics.py` | leftover "shared metrics used across all systems in Section VI" in `compute_metrics` docstring | Removed; docstring now points to Eq. 3/4 for the two paper-derived metrics and labels the rest as project additions |
+| `baselines/__init__.py` | "Baseline implementations used for fair comparison in Section VI" | Removed the fabricated "Section VI" reference |
+| `scripts/audit_rank_volatility.py` | leftover "Section IV method" in docstring + CLI banner | Removed; now describes the analysis without a false paper citation |
 
 **Why this matters**: presenting your own novel contribution as if it
 were extracted from the source paper is a real citation-integrity

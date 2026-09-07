@@ -2,8 +2,9 @@
 """
 Audit the rank-volatility relationship that motivates the Pareto extension.
 
-The SCALM paper's Section IV method ranks semantic patterns by
-token-saving-ratio (TSR) and clusters by volatility. The Pareto extension
+The SCALM paper ranks semantic patterns by token-saving-ratio (TSR) and
+clusters queries into patterns (see the paper's clustering and ranking
+sections). The Pareto extension
 hypothesizes that a pattern's TSR rank and its volatility are in tension:
 high-TSR (worth caching) patterns can also be high-volatility (risky to
 cache long-term). This script measures that tension directly.
@@ -73,7 +74,7 @@ def spearman_rho(x: list[float], y: list[float]) -> float:
 
 def main() -> None:
     print(SEPARATOR)
-    print("Rank-Volatility Audit (Section IV method, offline synthetic)")
+    print("Rank-Volatility Audit (offline synthetic)")
     print(SEPARATOR)
 
     # Build a synthetic dataset with enough reuse to form clusters.
