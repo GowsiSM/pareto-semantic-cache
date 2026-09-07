@@ -72,7 +72,7 @@ flowchart TD
 │   ├── scalm/{clustering,validator}.py
 │   ├── tests/                 # 109 tests: unit + regression + e2e
 │   └── vector_store/{faiss_store,in_memory}.py
-├── frontend/                  # demo UI (unchanged in this update)
+├── frontend/                  # demo UI (backend-aligned Pareto logic)
 ├── scripts/
 │   ├── audit_rank_volatility.py   # Spearman correlation: TSR vs. volatility
 │   ├── debug_moss.py
@@ -86,7 +86,7 @@ flowchart TD
 ```
 
 - **`backend/`** — the semantic cache engine: embedding, clustering, admission, eviction, and the Pareto extension. See [`backend/README.md`](backend/README.md) for implementation-level details and [`PARETO_AUDIT.md`](PARETO_AUDIT.md) for what was found and fixed.
-- **`frontend/`** — a lightweight demo UI that visualizes how a query flows through the cache (embedding → similarity search → HIT/MISS → cache update). Live demo: [pareto-semantic-cache-demo](https://pareto-semantic-cache-demo-three.vercel.app/)
+- **`frontend/`** — a lightweight demo UI that visualizes how a query flows through the cache (embedding → similarity search → HIT/MISS → cache update). Its Pareto logic is **backend-aligned**: same 2 objectives (`-token_saving_proxy, volatility`) and minimizing convention as `backend/pareto/`. Demo data is illustrative; the *logic* mirrors the backend. Live demo: [pareto-semantic-cache-demo](https://pareto-semantic-cache-demo-three.vercel.app/)
 
 ## Current Implementation Status
 
@@ -118,3 +118,7 @@ cd frontend
 npm install
 npm run dev
 ```
+
+The frontend's Pareto logic mirrors the backend's 2-objective minimizing
+convention (`-token_saving_proxy, volatility`); the demo data itself is
+illustrative, not computed from the backend.

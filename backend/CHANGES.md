@@ -117,6 +117,13 @@ Legend:
 | [`RUN.md`](RUN.md) | **NEW** | Commands to verify and run SCALM and Pareto separately. |
 | [`CHANGES.md`](CHANGES.md) | **NEW** | This file. |
 
+## Frontend (backend-aligned rewrite)
+
+| File | Type | Change |
+|---|---|---|
+| [`frontend/src/cacheData.js`](../frontend/src/cacheData.js) | **REF** | Rewired from a 4-objective (token/latency/correctness/cost) maximizing-convention mock to the backend's real 2 objectives: `(-token_saving_proxy, volatility)` under the minimizing convention. `dominates()`/`computeParetoFrontier()`/`pruneByHypervolume()` now mirror `backend/pareto/dominance.py` and `backend/pareto/objectives.py`. Removed `jointAdmissionScore()` (JAS) — already removed from the backend (§4). Demo data remains illustrative but the *logic* is backend-aligned. |
+| [`frontend/src/App.jsx`](../frontend/src/App.jsx) | **REF** | Removed JAS import/usage; candidate metrics now show token-saving proxy + volatility (not latency/correctness/cost); Pareto skyline chart plots volatility (x) vs token saving (y); footer and headers updated to "2D Objective Space (minimizing)". |
+
 ---
 
 ## Summary of impact
@@ -124,6 +131,7 @@ Legend:
 - **Test count: 19 → 109**, all passing (`python -m pytest backend/tests/ -q`). (115 − 6 JAS tests removed with the dead code.)
 - **9 fabricated citations fixed** across 9 files (the 8 original + a leftover "Section VI" in `evaluation/metrics.py` and a "Section IV method" in `scripts/audit_rank_volatility.py`).
 - **8 real bugs fixed**, each with a regression test (incl. the SCALM frozen-after-warmup bug, the FAISS silent-corruption bug, and the LMSYS wrong-schema bug).
-- **1 dead-code module removed**: `pareto/admission.py` (JAS) — never called by `ParetoCache`; cold-start admission is unconditional by design.
+- **1 dead-code module removed**: `pareto/admission.py` (JAS) — never called by `ParetoCache`; cold-start admission is unconditional by design. JAS also removed from the frontend.
 - **2 scripts implemented** (were placeholders).
 - **3 docs created** (`backend/README.md`, `backend/RUN.md`, `backend/CHANGES.md`).
+- **Frontend rewired to backend objectives**: 4-objective maximizing mock → 2-objective minimizing logic matching `backend/pareto/` (see "Frontend" section above).

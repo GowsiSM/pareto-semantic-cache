@@ -156,6 +156,14 @@ code (never called by `ParetoCache`) and its weighted-sum formula
 contradicted the multi-objective premise. Cold-start admission is
 unconditional by design; see `PARETO_DESIGN.md` §4.
 
+The frontend (`frontend/src/cacheData.js`, `frontend/src/App.jsx`) was
+**rewired to match the backend**: it now uses the same 2 objectives
+(`-token_saving_proxy, volatility`) and minimizing convention as
+`objectives.py`/`dominance.py`, and the JAS function was removed from
+the frontend too. The demo data remains illustrative (hardcoded), but
+the Pareto *logic* is now backend-aligned; see `PARETO_DESIGN.md` §6
+item 6.
+
 Plus: `classifier/volatility_classifier.py` and
 `classifier/domain_classifier.py` (bug-fixed), `baselines/gptcache.py`
 (rewritten to be genuinely semantic), `experiment/synthetic_dataset.py`

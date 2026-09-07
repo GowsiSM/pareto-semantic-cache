@@ -159,12 +159,22 @@ Not "does it run," but:
    Pareto evaluates each entry independently (fine-grained). Adding
    pattern-level clustering would collapse Pareto back toward SCALM's
    single-score ranking, contradicting the multi-objective philosophy.
-6. The frontend's Pareto visualization either reflects the real backend
+6. ~~The frontend's Pareto visualization either reflects the real backend
    objectives (token savings + volatility, minimizing convention) or is
    explicitly labeled as an illustrative mock, not connected to the
-   Python backend's actual logic.
+   Python backend's actual logic.~~ **Resolved: backend-aligned.** The
+   frontend (`frontend/src/cacheData.js`, `frontend/src/App.jsx`) now
+   uses the same 2 objectives (`-token_saving_proxy, volatility`) and
+   minimizing convention as `backend/pareto/objectives.py` and
+   `backend/pareto/dominance.py`. JAS was removed from the frontend too
+   (it was already removed from the backend — see §4). The demo data is
+   still illustrative (hardcoded), but the *logic* now mirrors the
+   backend exactly.
 
 Until these six are true, "Pareto extension implemented" should be
 understood as "the mechanism exists and its logic is internally
 tested," not "the mechanism has been shown to improve anything over
 SCALM on real data."
+
+All six items are now resolved (items 1-3 remain open as real-data
+validation work, not design decisions).

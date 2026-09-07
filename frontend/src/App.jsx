@@ -8,12 +8,10 @@ import {
   SIMILARITY_MAP,
   SIMILARITY_THRESHOLD,
   CANDIDATE_ENTRIES,
-  normalise,
   dominates,
   computeParetoFrontier,
   pruneByHypervolume,
-  jointAdmissionScore,
-} from "./cacheData"; // You'll need to create this file with the exported data
+} from "./cacheData";
 
 // ─── STEP PIPELINE ──────────────────────────────────────────────────────
 const steps = [
@@ -152,7 +150,6 @@ function App() {
             ...predefinedCandidate,
             response: LLM_RESPONSES[query]?.text || LLM_RESPONSES.default.text,
             embedding: [0.5, 0.3, -0.1, 0.4, 0.2, -0.3, 0.1, 0.5],
-            volatility: "stable",
             hits: 1,
           };
         } else {
@@ -162,11 +159,8 @@ function App() {
             query,
             response: LLM_RESPONSES.default.text,
             embedding: [0.5, 0.3, -0.1, 0.4, 0.2, -0.3, 0.1, 0.5],
-            tokenSaving: Math.round(70 + Math.random() * 27),
-            latency: Math.round(70 + Math.random() * 120),
-            correctness: Math.round(92 + Math.random() * 8),
-            computeCost: Math.round(20 + Math.random() * 40),
-            volatility: "stable",
+            tokenSaving: Math.round(200 + Math.random() * 150),
+            volatility: Math.round(Math.random() * 100) / 100,
             hits: 0,
           };
         }
@@ -177,9 +171,8 @@ function App() {
     }
 
     if (steps[next] === "evaluation") {
-      const score = candidate ? jointAdmissionScore(candidate) : 0;
       addLog(
-        `📊 Candidate evaluated on token savings, latency, correctness and compute cost. Joint score: ${score.toFixed(2)}`,
+        `📊 Candidate evaluated: token_saving_proxy=${candidate?.tokenSaving ?? 0}, volatility=${candidate?.volatility ?? 0}`,
       );
       setShowDetailedMetrics(true);
     }
@@ -259,7 +252,6 @@ function App() {
             ...predefinedCandidate,
             response: LLM_RESPONSES[query]?.text || LLM_RESPONSES.default.text,
             embedding: [0.5, 0.3, -0.1, 0.4, 0.2, -0.3, 0.1, 0.5],
-            volatility: "stable",
             hits: 0,
           };
         } else {
@@ -268,11 +260,8 @@ function App() {
             query,
             response: LLM_RESPONSES.default.text,
             embedding: [0.5, 0.3, -0.1, 0.4, 0.2, -0.3, 0.1, 0.5],
-            tokenSaving: 94,
-            latency: 75,
-            correctness: 99,
-            computeCost: 24,
-            volatility: "stable",
+            tokenSaving: 250,
+            volatility: 0.15,
             hits: 0,
           };
         }
@@ -322,7 +311,7 @@ function App() {
           <p className="eyebrow">RESEARCH DEMO</p>
           <h1>Pareto-Based Semantic Cache Management</h1>
           <p className="subtitle">
-            Frontend visualization of the proposed SCALM extension
+            Frontend visualization — backend-aligned Pareto logic (2 objectives, minimizing)
           </p>
         </div>
         <div className="badge">DEMO ONLY · SIMULATED BACKEND</div>
@@ -371,7 +360,7 @@ function App() {
           <div className="section-heading">
             <div>
               <h2>2. Processing Pipeline</h2>
-              <p>SCALM foundation → proposed Pareto-based cache decision</p>
+              <p>SCALM foundation → Pareto-based cache decision (backend-aligned)</p>
             </div>
           </div>
 
@@ -466,33 +455,21 @@ function App() {
                   <strong>{candidate.id}</strong>
                   <span>Candidate Cache Entry</span>
                   <span className="volatility-badge">
-                    {candidate.volatility}
+                    vol {candidate.volatility?.toFixed(2) ?? "0.00"}
                   </span>
                 </div>
                 <div className="metrics">
                   <Metric
-                    label="Token Saving"
+                    label="Token Saving Proxy"
                     value={candidate.tokenSaving}
-                    unit="%"
+                    unit=" tokens"
                   />
                   <Metric
-                    label="Latency"
-                    value={candidate.latency}
-                    unit=" ms"
+                    label="Volatility"
+                    value={candidate.volatility?.toFixed(2) ?? "0.00"}
                   />
-                  <Metric
-                    label="Correctness"
-                    value={candidate.correctness}
-                    unit="%"
-                  />
-                  <Metric label="Compute Cost" value={candidate.computeCost} />
                   {showDetailedMetrics && (
                     <>
-                      <Metric
-                        label="Joint Score"
-                        value={jointAdmissionScore(candidate).toFixed(2)}
-                        unit=""
-                      />
                       <Metric
                         label="Hits"
                         value={candidate.hits || 0}
@@ -522,13 +499,16 @@ function App() {
           </section>
         </div>
 
-        {/* Pareto Skyline */}
+        {/* Pareto Skyline — backend-aligned 2-objective plot */}
         <section className="card">
           <div className="section-heading">
             <div>
               <h2>5. Pareto Skyline</h2>
               <p>
-                Non-dominated entries represent different optimal trade-offs.
+                Non-dominated entries on the two real objectives: token saving
+                proxy (higher is better) and volatility (lower is better).
+                Minimizing convention: entry A dominates B when A's vector
+                (-tokenSaving, volatility) is ≤ B's on both axes.
               </p>
             </div>
             <div className="legend">
@@ -537,26 +517,35 @@ function App() {
           </div>
 
           <div className="pareto-area">
-            <div className="axis-y">Token Saving ↑</div>
+            <div className="axis-y">Token Saving Proxy ↑</div>
             <div className="chart">
               <div className="gridline g1" />
               <div className="gridline g2" />
               <div className="gridline g3" />
               {paretoWithCandidate.frontier.map((item) => {
-                const x = Math.min(92, Math.max(8, 100 - item.latency / 2.2));
-                const y = Math.min(90, Math.max(8, item.tokenSaving - 5));
+                const maxSaving = Math.max(
+                  ...paretoWithCandidate.frontier.map((e) => e.tokenSaving),
+                  1,
+                );
+                // X-axis: volatility (0 = left, 1 = right)
+                const x = Math.min(92, Math.max(8, item.volatility * 90 + 5));
+                // Y-axis: tokenSaving (higher = higher)
+                const y = Math.min(
+                  90,
+                  Math.max(8, (item.tokenSaving / maxSaving) * 85),
+                );
                 return (
                   <div
                     className={`point ${candidate?.id === item.id ? "candidate-point" : ""}`}
                     key={item.id}
                     style={{ left: `${x}%`, bottom: `${y}%` }}
-                    title={`${item.id}: ${item.tokenSaving}% savings, ${item.latency}ms`}
+                    title={`${item.id}: saving=${item.tokenSaving}, volatility=${item.volatility?.toFixed(2)}`}
                   >
                     <span>{item.id}</span>
                   </div>
                 );
               })}
-              <div className="axis-x">Lower Latency ← → Higher Latency</div>
+              <div className="axis-x">Low Volatility ← → High Volatility</div>
             </div>
           </div>
 
@@ -564,10 +553,8 @@ function App() {
             {paretoWithCandidate.frontier.map((item) => (
               <div className="frontier-item" key={item.id}>
                 <strong>{item.id}</strong>
-                <span>Token {item.tokenSaving}%</span>
-                <span>{item.latency} ms</span>
-                <span>Correctness {item.correctness}%</span>
-                <span>Cost {item.computeCost}</span>
+                <span>Saving: {item.tokenSaving}</span>
+                <span>Volatility: {item.volatility?.toFixed(2) ?? "0.00"}</span>
                 <span>Hits: {item.hits || 0}</span>
                 <div className="frontier-badge">NON-DOMINATED</div>
               </div>
@@ -629,11 +616,10 @@ function App() {
       <footer>
         <span>SCALM-inspired semantic cache workflow</span>
         <span>•</span>
-        <span>Proposed Pareto-based admission visualization</span>
+        <span>Pareto-based admission visualization (backend-aligned)</span>
         <span>•</span>
         <span>
-          4D Objective Space: Token Savings ↑ Latency ↓ Correctness ↑ Compute
-          Cost ↓
+          2D Objective Space (minimizing): -Token Saving Proxy, Volatility
         </span>
       </footer>
     </div>

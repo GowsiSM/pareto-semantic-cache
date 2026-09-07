@@ -1,6 +1,26 @@
 // ─── src/cacheData.js ─────────────────────────────────────────────────
+//
+// This file provides illustrative demo data for the frontend visualization.
+// The Pareto logic here is BACKEND-ALIGNED: it uses the same 2 objectives
+// and minimizing convention as backend/pareto/objectives.py.
+//
+// Objectives (minimizing convention — lower is better):
+//   1. tokenSavingProxy = total_token_count (query + answer tokens)
+//      Higher → more tokens saved per hit.  Negated for minimization.
+//   2. volatility = 0.0 (stable) … 1.0 (highly volatile)
+//      Higher → more likely to go stale, worse to cache.
+//
+// Dominance: entry A dominates B when A's objective vector is <= B's
+// on every coordinate and strictly < on at least one.
+//
+// NOTE: This is illustrative data, not computed from the real backend.
+// The frontend's job is to show the Pareto mechanism — the real numbers
+// come from scripts/run_pareto.py.
 
 // ─── DEMO CACHE ENTRIES ───────────────────────────────────────────────────
+// Each entry mirrors a backend CacheEntry with:
+//   - tokenSaving:  total_token_count (query + answer tokens, whitespace-split)
+//   - volatility:   0.0 (stable) … 1.0 (highly volatile)
 export const INITIAL_CACHE = [
   {
     id: "C1",
@@ -9,10 +29,7 @@ export const INITIAL_CACHE = [
       "Machine learning is a branch of artificial intelligence that allows systems to learn and improve from experience without being explicitly programmed. It focuses on building applications that can access data and use it to learn for themselves.",
     embedding: [0.82, 0.41, -0.12, 0.67, 0.29, -0.54, 0.11, 0.78],
     tokenSaving: 82,
-    latency: 80,
-    correctness: 98,
-    computeCost: 22,
-    volatility: "stable",
+    volatility: 0.1,
     hits: 14,
   },
   {
@@ -22,10 +39,7 @@ export const INITIAL_CACHE = [
       "Neural networks are computing systems inspired by biological neural networks in animal brains. They consist of layers of interconnected nodes (neurons) that process information using connectionist approaches.",
     embedding: [0.74, 0.38, -0.09, 0.61, 0.33, -0.48, 0.17, 0.71],
     tokenSaving: 76,
-    latency: 120,
-    correctness: 99,
-    computeCost: 31,
-    volatility: "stable",
+    volatility: 0.3,
     hits: 9,
   },
   {
@@ -35,10 +49,7 @@ export const INITIAL_CACHE = [
       "Cloud computing is the on-demand availability of computer system resources, especially data storage and computing power, without direct active management by the user.",
     embedding: [0.31, -0.22, 0.55, 0.18, 0.44, 0.62, -0.33, 0.25],
     tokenSaving: 65,
-    latency: 90,
-    correctness: 96,
-    computeCost: 27,
-    volatility: "stable",
+    volatility: 0.0,
     hits: 6,
   },
   {
@@ -48,10 +59,7 @@ export const INITIAL_CACHE = [
       "Deep learning is part of a broader family of machine learning methods based on artificial neural networks with representation learning. It uses multiple layers to progressively extract higher-level features from raw input.",
     embedding: [0.79, 0.44, -0.1, 0.65, 0.31, -0.51, 0.13, 0.75],
     tokenSaving: 79,
-    latency: 95,
-    correctness: 97,
-    computeCost: 25,
-    volatility: "stable",
+    volatility: 0.2,
     hits: 11,
   },
 ];
@@ -91,24 +99,20 @@ export const DEMO_QUERIES = [
 ];
 
 // ─── SIMULATED LLM RESPONSES (for cache misses) ───────────────────────────
+// In production these come from the real LLM API; here we use
+// illustrative token counts that feed into token_saving_proxy.
 export const LLM_RESPONSES = {
   "What is quantum computing?": {
     text: "Quantum computing harnesses quantum mechanical phenomena like superposition and entanglement to process information in fundamentally different ways than classical computers. Qubits can represent 0 and 1 simultaneously, enabling parallel computation at scale.",
     tokens: 312,
-    latencyMs: 2140,
-    computeCost: 28,
   },
   "How does blockchain work?": {
     text: "Blockchain is a distributed ledger technology where data is stored in blocks that are cryptographically linked. Each block contains a hash of the previous block, transaction data, and a timestamp, making the chain tamper-resistant.",
     tokens: 287,
-    latencyMs: 1980,
-    computeCost: 26,
   },
   default: {
     text: "This is a simulated LLM response generated for demonstration purposes. In production, this would be the actual response from an LLM API such as Gemini or GPT.",
     tokens: 250,
-    latencyMs: 1800,
-    computeCost: 24,
   },
 };
 
@@ -133,56 +137,54 @@ export const CANDIDATE_ENTRIES = {
   "What is quantum computing?": {
     id: "C5",
     query: "What is quantum computing?",
-    tokenSaving: 91,
-    latency: 74,
-    correctness: 97,
-    computeCost: 23,
-    volatility: "stable",
+    tokenSaving: 312,
+    volatility: 0.0,
   },
   "How does blockchain work?": {
     id: "C5",
     query: "How does blockchain work?",
-    tokenSaving: 68,
-    latency: 110,
-    correctness: 95,
-    computeCost: 34,
-    volatility: "stable",
+    tokenSaving: 287,
+    volatility: 0.4,
   },
 };
 
 // ─── PARETO FUNCTIONS ──────────────────────────────────────────────────────
+//
+// These functions are BACKEND-ALIGNED with backend/pareto/dominance.py
+// and backend/pareto/objectives.py.
+//
+// Objectives (MINIMIZING convention — lower is better in every coordinate):
+//   obj[0] = -tokenSaving   (negated so higher tokenSaving → lower value)
+//   obj[1] = volatility     (0.0 = stable, 1.0 = highly volatile)
+//
+// Dominance: A dominates B iff A <= B on every objective and A < B on
+// at least one.
 
 /**
- * Pareto Skyline Computation
- * Each cache entry is a point in 4D objective space:
- *   tokenSaving   (higher is better)
- *   latency       (higher = more latency SAVED, so higher is better)
- *   correctness   (higher is better)
- *   computeCost   (lower is better → invert to: 100 - computeCost)
- *
- * Entry A dominates entry B if:
- *   A >= B on all four axes AND A > B on at least one.
- *
- * The Pareto frontier = all non-dominated entries.
+ * Build the minimizing-convention objective vector for one entry.
+ * Mirrors backend/pareto/objectives.py::objective_vector().
  */
-
-export function normalise(entry) {
-  return {
-    ...entry,
-    // Invert computeCost so "higher is better" on every axis
-    computeScore: 100 - entry.computeCost,
-  };
+function objectiveVector(entry) {
+  const boundedVol = Math.max(0, Math.min(1, entry.volatility ?? 0));
+  return [-entry.tokenSaving, boundedVol];
 }
 
+/**
+ * Pareto dominance test (minimizing convention).
+ * Mirrors backend/pareto/dominance.py::dominates().
+ */
 export function dominates(a, b) {
-  const aN = normalise(a);
-  const bN = normalise(b);
-  const axes = ["tokenSaving", "latency", "correctness", "computeScore"];
-  const allGte = axes.every((ax) => aN[ax] >= bN[ax]);
-  const someGt = axes.some((ax) => aN[ax] > bN[ax]);
-  return allGte && someGt;
+  const aObj = objectiveVector(a);
+  const bObj = objectiveVector(b);
+  const allLte = aObj[0] <= bObj[0] && aObj[1] <= bObj[1];
+  const someLt = aObj[0] < bObj[0] || aObj[1] < bObj[1];
+  return allLte && someLt;
 }
 
+/**
+ * Compute the Pareto frontier (non-dominated set) from a list of entries.
+ * Returns { frontier, dominated } where each entry carries its obj vector.
+ */
 export function computeParetoFrontier(entries) {
   const frontier = [];
   const dominated = [];
@@ -203,19 +205,22 @@ export function computeParetoFrontier(entries) {
 
 /**
  * Hypervolume contribution proxy (simplified):
- * When |frontier| > budget, drop the entry with the lowest
- * product of all normalised objective values.
+ * When |frontier| > budget, drop the entry with the lowest hypervolume
+ * contribution (product of objective values in the minimising space,
+ * scaled to [0,1]).
  */
 export function pruneByHypervolume(frontier, budget) {
   if (frontier.length <= budget) return { kept: frontier, pruned: [] };
+
+  const maxSaving = Math.max(...frontier.map((e) => e.tokenSaving), 1);
   const scored = frontier.map((e) => {
-    const n = normalise(e);
-    const score =
-      (n.tokenSaving / 100) *
-      (n.latency / 150) *
-      (n.correctness / 100) *
-      (n.computeScore / 100);
-    return { ...e, hvScore: score };
+    const obj = objectiveVector(e);
+    // Normalise to [0,1] in minimising space: -obj[0]/maxSaving in [0,1], obj[1] in [0,1]
+    const normSaving = (-obj[0]) / maxSaving;  // higher saving → higher normSaving
+    const normVol = obj[1];                     // lower volatility → lower normVol
+    // HV proxy: product of normalised values (lower is worse → prune lowest)
+    const hvScore = normSaving * (1 - normVol);
+    return { ...e, hvScore };
   });
   scored.sort((a, b) => b.hvScore - a.hvScore);
   return {
@@ -225,13 +230,7 @@ export function pruneByHypervolume(frontier, budget) {
 }
 
 /**
- * Joint admission score (SCALM-V formula):
- *   priority = tokenSaving × (1 − α × volatility_score)
- *
- * volatility_score: stable=0.1, temporal=0.7, personal=1.0
+ * Note: JointAdmissionScore (JAS) has been removed from the backend
+ * because it collapses two objectives into a single weighted sum,
+ * which contradicts the Pareto philosophy.  See PARETO_DESIGN.md §4.
  */
-export function jointAdmissionScore(entry, alpha = 0.5) {
-  const volScore =
-    { stable: 0.1, temporal: 0.7, personal: 1.0 }[entry.volatility] ?? 0.3;
-  return entry.tokenSaving * (1 - alpha * volScore);
-}
