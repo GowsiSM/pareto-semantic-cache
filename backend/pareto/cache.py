@@ -138,7 +138,7 @@ class ParetoCache:
             query_text=query_text,
             answer_text=answer_text,
             embedding=embedding,
-            pattern_id=None,  # ParetoCache doesn't use SCALM's clustering/patterns
+            pattern_id=None,  # Intentional — Pareto uses per-entry objectives, not pattern-level (PARETO_DESIGN.md §2 item 5)
             query_token_count=query_tokens,
             answer_token_count=answer_tokens,
         )

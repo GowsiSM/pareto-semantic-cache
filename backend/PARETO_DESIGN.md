@@ -150,12 +150,15 @@ Not "does it run," but:
 4. ~~JAS's role is resolved one way or the other (§4), not left
    ambiguous.~~ **Resolved: JAS was removed** (§4) — cold-start admission
    is unconditional by design, matching SCALM.
-5. A decision is made and documented on whether `ParetoCache` should use
-   SCALM's clustering (currently it evaluates every query independently,
-   with no semantic pattern grouping at all — meaning it forgoes the
-   part of SCALM's design that groups semantically similar queries
-   before ranking them, which may or may not matter for the two
-   objectives in use).
+5. ~~A decision is made and documented on whether `ParetoCache` should use
+   SCALM's clustering~~ **Resolved: intentional.** Pareto uses per-entry
+   objectives (`-token_saving_proxy, volatility`), not pattern-level.
+   Two entries in the same semantic cluster can receive different
+   admission/eviction decisions — this is a design *feature*. SCALM
+   groups queries and gives all members the same rank (coarse-grained);
+   Pareto evaluates each entry independently (fine-grained). Adding
+   pattern-level clustering would collapse Pareto back toward SCALM's
+   single-score ranking, contradicting the multi-objective philosophy.
 6. The frontend's Pareto visualization either reflects the real backend
    objectives (token savings + volatility, minimizing convention) or is
    explicitly labeled as an illustrative mock, not connected to the
