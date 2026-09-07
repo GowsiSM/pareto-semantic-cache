@@ -47,7 +47,7 @@ backend/
 ├── scalm/
 │   ├── clustering.py                # DBSCANRoundClustering
 │   └── validator.py                 # SCALMValidator
-├── tests/                           # 95 tests (unit + regression + e2e)
+├── tests/                           # 106 tests (unit + regression + e2e)
 └── vector_store/
     ├── faiss_store.py               # FAISS-backed store
     └── in_memory.py                 # InMemoryVectorStore (cosine)

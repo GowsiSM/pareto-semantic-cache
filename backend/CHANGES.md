@@ -51,6 +51,12 @@ Legend:
 | [`cache/admission.py`](cache/admission.py) | **IMPL** | Added `AlwaysAdmitPolicy` (GPTCache baseline admission). |
 | [`cache/eviction.py`](cache/eviction.py) | **IMPL** | Added `PlainLFUEviction` and `PlainLRUEviction` (GPTCache baseline eviction). |
 
+## Vector store
+
+| File | Type | Change |
+|---|---|---|
+| [`vector_store/faiss_store.py`](vector_store/faiss_store.py) | **FIX** | **Fixed silent data-corruption bug**: the old implementation rebuilt the FAISS index on every `remove()`, renumbering FAISS's internal positions 0..n-1 while `_entries` kept the old keys — so after any eviction, `search()` silently returned the wrong entry. Now wraps `IndexFlatIP` in an `IndexIDMap` with stable external IDs and uses FAISS's native `remove_ids` (no rebuild), so search results always map to the correct entry. |
+
 ## Embedding
 
 | File | Type | Change |
@@ -95,6 +101,7 @@ Legend:
 | [`tests/pareto/test_admission_and_threshold.py`](tests/pareto/test_admission_and_threshold.py) | **NEW** | JAS + threshold adapter tests. |
 | [`tests/test_classifiers.py`](tests/test_classifiers.py) | **NEW** | Classifier tests incl. regression for the single-letter-"i" substring bug. |
 | [`tests/scalm/test_validator.py`](tests/scalm/test_validator.py) | **NEW** | Regression tests for the SCALM freeze-bug fix: verifies the cache admits entries after warmup and that patterns receive varied (non-LOW) ranks. |
+| [`tests/test_vector_store.py`](tests/test_vector_store.py) | **NEW** | FAISSVectorStore regression tests for the silent-corruption bug: search-after-remove returns the correct entry, multiple removes, remove-then-add, remove-nonexistent, remove-all, get/all_entries consistency. |
 
 ## Docs
 
@@ -110,8 +117,8 @@ Legend:
 
 ## Summary of impact
 
-- **Test count: 19 → 99**, all passing (`python -m pytest backend/tests/ -q`).
+- **Test count: 19 → 106**, all passing (`python -m pytest backend/tests/ -q`).
 - **8 fabricated citations fixed** across 8 files.
-- **6 real bugs fixed**, each with a regression test (incl. the SCALM frozen-after-warmup bug).
+- **7 real bugs fixed**, each with a regression test (incl. the SCALM frozen-after-warmup bug and the FAISS silent-corruption bug).
 - **2 scripts implemented** (were placeholders).
 - **3 docs created** (`backend/README.md`, `backend/RUN.md`, `backend/CHANGES.md`).

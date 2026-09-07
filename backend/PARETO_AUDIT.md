@@ -75,6 +75,18 @@ only when none is given) so the validator can run in environments
 without Hugging Face access — needed to run the three-way comparison in
 `scripts/run_pareto.py` at all in this sandbox.
 
+### 2.6 `FAISSVectorStore` silently returned wrong entries after eviction
+`vector_store/faiss_store.py` rebuilt the FAISS index on every
+`remove()` call. The rebuild renumbered FAISS's internal positions
+0..n-1, but `_entries` kept the *old* keys — so after any eviction,
+`search()` mapped positions to the wrong `CacheEntry` and returned
+**silently corrupted results** (no error, just wrong data). Reproduced
+concretely: with entries A/B/C/D added and B removed, searching for D's
+vector returned C. Fixed by wrapping `IndexFlatIP` in an `IndexIDMap`
+with stable external IDs and using FAISS's native `remove_ids` (no
+rebuild), so search results always map to the correct entry. Caught by
+`test_vector_store.py::TestFAISSVectorStore::test_search_after_remove_returns_correct_entry`.
+
 ## 3. Known limitation found, now FIXED
 
 `SCALMValidator.run()` originally constructed every `SemanticPattern` —
@@ -188,7 +200,7 @@ extension's second objective actually matter — see section 7, step 2.
 
 ## 6. Test coverage
 
-95/95 tests passing, up from 19 at the start of this work. New test
+95/106 tests passing, up from 19 at the start of this work. New test
 files: `test_dominance_and_frontier.py`, `test_hypervolume.py`,
 `test_admission_and_threshold.py`, `test_objectives.py`, `test_cache.py`,
 `test_validator.py`, `test_classifiers.py`, `test_gptcache_baseline.py`.

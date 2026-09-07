@@ -16,11 +16,23 @@ class FAISSVectorStore:
     FAISS-based vector store with efficient similarity search.
 
     Recommended for production use with >1000 entries.
+
+    ID management: the store wraps an ``IndexFlatIP`` in an
+    ``IndexIDMap`` so each entry keeps a stable external ID (its
+    ``entry_id``, hashed to an int64).  ``remove()`` uses FAISS's native
+    ``remove_ids``, so the index never needs a full rebuild and search
+    results always map back to the correct entry.  (The previous
+    implementation rebuilt the index on every removal, which renumbered
+    FAISS's internal positions 0..n-1 while ``_entries`` kept the old
+    keys — after any eviction, ``search()`` silently returned the wrong
+    entries.)
     """
 
     def __init__(self, dimension: int = 384):
         self.dimension = dimension
-        self.index = faiss.IndexFlatIP(dimension)  # Inner product = cosine (with normalized vectors)
+        # IndexIDMap keeps stable external IDs; search() returns those
+        # IDs directly, so results always map to the right CacheEntry.
+        self.index = faiss.IndexIDMap(faiss.IndexFlatIP(dimension))
         self._entries: dict[int, CacheEntry] = {}
         self._id_counter = 0
 
@@ -29,13 +41,19 @@ class FAISSVectorStore:
         norm = np.linalg.norm(vec)
         return vec / norm if norm > 0 else vec
 
+    def _next_id(self) -> int:
+        """Return the next stable external ID for the FAISS index."""
+        faiss_id = self._id_counter
+        self._id_counter += 1
+        return faiss_id
+
     def add(self, entry: CacheEntry) -> None:
         vec = np.array(entry.embedding, dtype=np.float32).reshape(1, -1)
         vec = self._normalize(vec)
-        self.index.add(vec)
-        self._entries[self._id_counter] = entry
-        entry._faiss_id = self._id_counter  # Store ID for retrieval
-        self._id_counter += 1
+        faiss_id = self._next_id()
+        self.index.add_with_ids(vec, np.array([faiss_id], dtype=np.int64))
+        self._entries[faiss_id] = entry
+        entry._faiss_id = faiss_id  # Store ID for retrieval
 
     def search(
         self, query_embedding: list[float], top_k: int = 5
@@ -58,26 +76,10 @@ class FAISSVectorStore:
         for idx, entry in self._entries.items():
             if entry.entry_id == entry_id:
                 del self._entries[idx]
-                # FAISS doesn't support removal; rebuild index
-                self._rebuild_index()
+                # FAISS supports native removal via remove_ids; no rebuild
+                # needed, so external IDs stay stable.
+                self.index.remove_ids(np.array([idx], dtype=np.int64))
                 return
-
-    def _rebuild_index(self) -> None:
-        """Rebuild FAISS index from remaining entries."""
-        if not self._entries:
-            self.index = faiss.IndexFlatIP(self.dimension)
-            return
-
-        vectors = []
-        new_entries = {}
-        for idx, entry in self._entries.items():
-            vec = np.array(entry.embedding, dtype=np.float32).reshape(1, -1)
-            vec = self._normalize(vec)
-            vectors.append(vec.flatten())
-            new_entries[idx] = entry
-
-        self.index = faiss.IndexFlatIP(self.dimension)
-        self.index.add(np.array(vectors, dtype=np.float32))
 
     def get(self, entry_id: str) -> Optional[CacheEntry]:
         for entry in self._entries.values():
