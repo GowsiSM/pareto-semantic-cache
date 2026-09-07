@@ -34,3 +34,38 @@ class RankSeededLFUEviction:
                  entry.created_at < victim.created_at)):
                 victim = entry
         return victim
+
+
+class PlainLFUEviction:
+    """
+    GPTCache-style baseline eviction: plain LFU using pure hit_count,
+    ignoring SCALM's pattern-rank-seeded priority entirely. This is what
+    makes it a fair "no semantic awareness" baseline to compare SCALM
+    and the Pareto extension against.
+    """
+
+    def select_victim(self, entries: list[CacheEntry]) -> CacheEntry:
+        if not entries:
+            raise ValueError("Cannot select a victim from an empty entry list")
+        victim = entries[0]
+        for entry in entries[1:]:
+            if (entry.hit_count < victim.hit_count or
+                (entry.hit_count == victim.hit_count and entry.created_at < victim.created_at)):
+                victim = entry
+        return victim
+
+
+class PlainLRUEviction:
+    """
+    GPTCache-style baseline eviction: plain LRU, evicting whichever
+    entry was accessed longest ago, ignoring rank/frequency entirely.
+    """
+
+    def select_victim(self, entries: list[CacheEntry]) -> CacheEntry:
+        if not entries:
+            raise ValueError("Cannot select a victim from an empty entry list")
+        victim = entries[0]
+        for entry in entries[1:]:
+            if entry.last_accessed_at < victim.last_accessed_at:
+                victim = entry
+        return victim

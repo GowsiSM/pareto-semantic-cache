@@ -39,3 +39,23 @@ class RankBasedAdmissionPolicy:
         if pattern is None:
             return False
         return pattern.rank in self._ALLOWED_RANKS
+
+
+class AlwaysAdmitPolicy:
+    """
+    GPTCache-style baseline admission: admit every candidate regardless
+    of pattern/rank, always. Capacity is enforced entirely by the
+    eviction policy once the cache is full. Paired with PlainLFUEviction
+    or PlainLRUEviction, this matches the paper's own baseline
+    description (section V-E: "we... use LFU and LRU as baselines in
+    GPTCache") — flat similarity-threshold lookup with classic cache
+    replacement, no semantic clustering or rank-aware admission.
+    """
+
+    def should_admit(
+        self,
+        candidate: CacheEntry,
+        pattern: Optional[SemanticPattern],
+        cache_is_full: bool,
+    ) -> bool:
+        return True

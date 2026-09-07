@@ -1,6 +1,8 @@
 # Pareto-Optimized Multi-Objective Semantic Cache Management for Large Language Models
 
-A semantic caching system for LLM chat services, built on top of [SCALM](https://arxiv.org/abs/2406.00025) (Semantic Caching for Automated Chat Services with Large Language Models). This project extends SCALM's single-score, rank-based cache admission and eviction with **Pareto Skyline multi-objective optimization** — jointly considering token savings, response latency, answer correctness, and computation cost instead of a single heuristic rank.
+A semantic caching system for LLM chat services, built on top of [SCALM](https://arxiv.org/abs/2406.00025) (Semantic Caching for Automated Chat Services with Large Language Models). This project extends SCALM's single-score, rank-based cache admission and eviction with **Pareto multi-objective optimization**.
+
+**Status note**: the original design considered four objectives (token savings, latency, correctness, compute cost). What's actually implemented uses **two objectives: token-saving proxy and query volatility** (see `backend/pareto/objectives.py`) — latency and correctness are not yet part of the objective function. See [`PARETO_AUDIT.md`](PARETO_AUDIT.md) for the full, honest record of what's implemented, what's been found and fixed, and what hasn't been validated yet.
 
 ---
 
@@ -8,15 +10,15 @@ A semantic caching system for LLM chat services, built on top of [SCALM](https:/
 
 LLM chat services incur significant latency and inference cost per query. Semantic caching addresses this by reusing cached responses for semantically similar queries instead of recomputing them.
 
-Most existing semantic caches, including SCALM, make cache decisions using a **single heuristic score** (usually token savings), ignoring other factors that matter in production — latency, correctness, and compute cost. This project treats cache admission and eviction as a genuine **multi-objective problem**, retaining only cache entries that represent the best trade-offs across all objectives at once.
+Most existing semantic caches, including SCALM, make cache decisions using a **single heuristic score** (usually token savings), ignoring other factors that matter in production. This project treats cache admission and eviction as a genuine **multi-objective problem** — currently token savings vs. volatility (how likely an answer is to go stale or be user-specific) — retaining only cache entries that represent the best trade-offs across both objectives at once, using Pareto dominance rather than a single weighted score.
 
 ## Proposed System
 
-1. **Semantic clustering** — user queries are embedded and grouped using hierarchical semantic clustering (SCALM's CO-HSC/SE-HSC approach).
+1. **Semantic clustering** — user queries are embedded and grouped using hierarchical semantic clustering (SCALM's CO-HSC/SE-HSC approach, used by the SCALM baseline).
 2. **Semantic cache lookup** — a query is checked against the cache via similarity search; a hit returns the cached response directly, a miss is forwarded to the LLM.
-3. **Multi-objective evaluation** — every candidate cache entry is scored across multiple objectives simultaneously: token savings, response latency, answer correctness, and computation cost.
-4. **Pareto Skyline Selection** — instead of a single weighted score, the system retains only **non-dominated (Pareto-optimal) cache entries**.
-5. **Adaptive cache admission/eviction** — decisions adjust as the workload and cache state change.
+3. **Multi-objective evaluation** — every candidate cache entry is scored on two objectives: token-saving proxy (bigger cached answers save more tokens per hit) and volatility (a keyword-based STABLE/TEMPORAL/PERSONAL classification — see `backend/classifier/volatility_classifier.py`).
+4. **Pareto-based admission and eviction** — a candidate is admitted only if it is NOT dominated by an existing cache entry in both objectives; when eviction is needed, the entry with the lowest hypervolume contribution is removed first.
+5. **Adaptive similarity threshold** — the match threshold is adjusted per query domain and volatility (`backend/pareto/threshold.py`), rather than SCALM's single fixed 0.90 threshold.
 
 ## Architecture
 
@@ -33,14 +35,13 @@ flowchart TD
     end
 
     G --> H["Multi-Objective Evaluation:
-    1. Token Saving
-    2. Response Latency
-    3. Answer Correctness
-    4. Computation Cost"]
-    H --> I["Pareto Skyline Selection
-    (find the best trade-offs)"]
+    1. Token-Saving Proxy
+    2. Volatility (STABLE/TEMPORAL/PERSONAL)"]
+    H --> I["Pareto Dominance Check
+    (reject if dominated by an existing entry)"]
     I --> J[Select Non-Dominated Cache Entries]
-    J --> K[Cache Admission / Eviction]
+    J --> K["Cache Admission / Eviction
+    (hypervolume contribution for eviction)"]
     K --> L[Updated Semantic Cache]
     L -.-> C
 ```
@@ -49,91 +50,57 @@ flowchart TD
 
 ```
 ├── backend
+│   ├── README.md
 │   ├── __init__.py
 │   ├── requirements.txt
-│   ├── baselines
-│   │   ├── __init__.py
-│   │   └── gptcache.py
-│   ├── classifier
-│   │   ├── __init__.py
-│   │   ├── domain_classifier.py
-│   │   └── volatility_classifier.py
-│   ├── domain
-│   │   ├── __init__.py
-│   │   └── entities.py
-│   ├── embedding
-│   │   ├── __init__.py
-│   │   ├── mock_embedding.py
-│   │   ├── sentence_transformer_provider.py
-│   │   └── token_counter.py
-│   ├── evaluation
-│   │   ├── __init__.py
-│   │   └── metrics.py
-│   ├── experiment
-│   │   ├── __init__.py
-│   │   ├── lmsys_loader.py
-│   │   └── moss_loader.py
-│   ├── interfaces
-│   │   ├── __init__.py
-│   │   └── protocols.py
-│   ├── pareto
-│   │   ├── __init__.py
-│   │   ├── admission.py
-│   │   ├── dominance.py
-│   │   ├── frontier.py
-│   │   ├── threshold.py
-│   │   └── validator.py
-│   ├── scalm
-│   │   ├── __init__.py
-│   │   ├── clustering.py
-│   │   └── validator.py
-│   ├── tests
-│   │   ├── __init__.py
-│   │   ├── test_e2e_cache.py
-│   │   ├── test_loader.py
-│   │   ├── test_vector_store.py
-│   │   └── scalm
-│   │       ├── __init__.py
-│   │       ├── test_admission_eviction.py
-│   │       └── test_clustering.py
-│   ├── vector_store
-│   │   ├── __init__.py
-│   │   ├── faiss_store.py
-│   │   └── in_memory.py
-│   └── cache
-│       ├── __init__.py
-│       ├── admission.py
-│       ├── eviction.py
-│       └── scalm_cache.py
-├── data
-│   ├── moss-003-sft-no-tools.jsonl
-│   └── moss_sample.jsonl
-├── frontend
-│   ├── src
-│   │   ├── App.jsx
-│   │   ├── cacheData.js
-│   │   ├── main.jsx
-│   │   └── styles.css
-│   ├── README.md
-│   ├── index.html
-│   ├── package-lock.json
-│   ├── package.json
-│   ├── vercel.json
-│   └── vite.config.js
-├── scripts
-│   ├── audit_rank_volatility.py
+│   ├── baselines/gptcache.py
+│   ├── cache/{admission,eviction,scalm_cache}.py
+│   ├── classifier/{domain_classifier,volatility_classifier}.py
+│   ├── domain/entities.py
+│   ├── embedding/{mock_embedding,sentence_transformer_provider,token_counter}.py
+│   ├── evaluation/metrics.py
+│   ├── experiment/{lmsys_loader,moss_loader,synthetic_dataset}.py
+│   ├── interfaces/protocols.py
+│   ├── pareto/
+│   │   ├── admission.py       # JAS scalar score
+│   │   ├── cache.py           # ParetoCache orchestrator
+│   │   ├── dominance.py       # Pareto dominance + frontier
+│   │   ├── frontier.py        # capacity-aware frontier selection
+│   │   ├── hypervolume.py     # hypervolume contribution + pruning
+│   │   ├── objectives.py      # objective vector construction
+│   │   ├── threshold.py       # adaptive similarity threshold
+│   │   └── validator.py       # ParetoValidator
+│   ├── scalm/{clustering,validator}.py
+│   ├── tests/                 # 95 tests: unit + regression + e2e
+│   └── vector_store/{faiss_store,in_memory}.py
+├── frontend/                  # demo UI (unchanged in this update)
+├── scripts/
+│   ├── audit_rank_volatility.py   # Spearman correlation: TSR vs. volatility
 │   ├── debug_moss.py
 │   ├── extract_sample.py
-│   ├── run_pareto.py
+│   ├── run_pareto.py              # GPTCache vs. SCALM vs. Pareto comparison
 │   └── run_scalm.py
+├── PARETO_AUDIT.md             # full record of fixes/findings from this update
 ├── .editorconfig
 ├── .gitignore
-├── README.md
-└── .vscode
+└── README.md
 ```
 
-- **`backend/`** — the semantic cache engine itself: embedding, clustering, admission, eviction, and lookup logic. See [`backend/README.md`](backend/README.md) for implementation-level details.
+- **`backend/`** — the semantic cache engine: embedding, clustering, admission, eviction, and the Pareto extension. See [`backend/README.md`](backend/README.md) for implementation-level details and [`PARETO_AUDIT.md`](PARETO_AUDIT.md) for what was found and fixed.
 - **`frontend/`** — a lightweight demo UI that visualizes how a query flows through the cache (embedding → similarity search → HIT/MISS → cache update). Live demo: [pareto-semantic-cache-demo](https://pareto-semantic-cache-demo-three.vercel.app/)
+
+## Current Implementation Status
+
+| Component | Status |
+|---|---|
+| SCALM baseline (clustering, admission, eviction) | ✅ Implemented — ⚠️ known bug: cache freezes post-warmup, see `PARETO_AUDIT.md` §3 |
+| GPTCache flat baseline | ✅ Implemented (rewritten from a broken exact-match version) |
+| Pareto dominance, frontier, hypervolume pruning | ✅ Implemented and tested |
+| `ParetoCache` (admission + eviction) | ✅ Implemented |
+| Volatility / domain classifiers | ✅ Implemented, bug-fixed |
+| Rank-volatility correlation audit | ✅ Implemented — **not yet run on real data** |
+| Real-dataset validation (MOSS/LMSYS) | ⏳ Requires network access outside this environment |
+| Latency / correctness as objectives | ❌ Not implemented — current objectives are token savings + volatility only |
 
 ## Getting Started
 
