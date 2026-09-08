@@ -53,12 +53,15 @@ DATASET_PATH = next(
     (path for path in DATASET_CANDIDATES if path.exists()), DATASET_CANDIDATES[0]
 )
 
-# Number of first-turn pairs to embed and cluster. Keep modest so the
-# script runs in reasonable time with real embeddings + DBSCAN.
-SAMPLE_SIZE = 2000
-# DBSCAN eps for real 384-dim embeddings. The synthetic audit used 0.3 on
-# mock embeddings; real MiniLM embeddings are denser, so use a larger eps.
-DBSCAN_EPS = 0.6
+# Number of first-turn pairs to embed and cluster. 10,000 gives enough
+# clusters for a statistically meaningful Spearman rho (with n=5 clusters
+# the earlier run's rho=-0.354 was meaningless; you need |rho|≈0.9 at
+# n=5, but only |rho|≈0.2 at n=100).
+SAMPLE_SIZE = 10000
+# DBSCAN eps for real 384-dim embeddings. 0.3 (same as the synthetic
+# audit) forms tighter clusters → more clusters → a meaningful rho.
+# The earlier 0.6 produced only ~5 clusters from 2,000 queries.
+DBSCAN_EPS = 0.3
 DBSCAN_MIN_SAMPLES = 2
 
 
@@ -162,11 +165,19 @@ def main() -> None:
         return
 
     rho = spearman_rho(tsr_values, volatility_values)
+        n = len(tsr_values)
 
-    print()
-    print(f"Patterns analyzed: {len(tsr_values)}")
-    print(f"Spearman rho (TSR rank vs. volatility): {rho:.3f}")
-    print()
+        print()
+        print(f"Patterns analyzed: {n}")
+        print(f"Spearman rho (TSR rank vs. volatility): {rho:.3f}")
+        # Approximate significance threshold for Spearman rho at alpha=0.05
+        # (two-tailed): |rho| >= 1.96 / sqrt(n - 1). With n=5 that is ~0.98;
+        # with n=100 it is ~0.20. Report it so the reader can judge whether
+        # the correlation is meaningful.
+        sig_threshold = 1.96 / (n - 1) ** 0.5 if n > 2 else 1.0
+        print(f"Significance threshold (|rho| >= {sig_threshold:.3f} at alpha=0.05): "
+              f"{'MET' if abs(rho) >= sig_threshold else 'NOT MET'}")
+        print()
     print("Interpretation (PARETO_DESIGN.md section 5):")
     if rho < -0.3:
         print("  Negative correlation: high-TSR patterns tend to be volatile.")

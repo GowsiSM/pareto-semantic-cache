@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Tuple
 
+from backend.classifier.volatility_classifier import VolatilityClassifier
 from backend.embedding.token_counter import SimpleTokenCounter
 from backend.pareto.cache import ParetoCache
 from backend.vector_store.in_memory import InMemoryVectorStore
@@ -47,7 +48,10 @@ class ParetoValidator:
             "tokens_saved": 0,
             "total_tokens": 0,
             "llm_calls": 0,
+            "stale_hits": 0,
+            "false_hits": 0,
         }
+        self._volatility_clf = VolatilityClassifier()
 
     def run(self, qa_pairs: List[Tuple[str, str]], warmup_count: int = 100) -> Dict:
         """
@@ -68,6 +72,13 @@ class ParetoValidator:
             if result.hit:
                 self.stats["hits"] += 1
                 self.stats["tokens_saved"] += response_tokens
+
+                # Quality: track stale and false hits
+                entry_query = getattr(result.entry, "query_text", None)
+                if entry_query and self._volatility_clf.volatility_score(entry_query) > 0.0:
+                    self.stats["stale_hits"] += 1
+                if result.similarity is not None and result.similarity < self.similarity_threshold:
+                    self.stats["false_hits"] += 1
             else:
                 self.stats["misses"] += 1
                 self.stats["llm_calls"] += 1
@@ -80,12 +91,26 @@ class ParetoValidator:
             if self.stats["total_tokens"] > 0
             else 0
         )
+        staleness_rate = (
+            self.stats["stale_hits"] / self.stats["hits"]
+            if self.stats["hits"] > 0
+            else 0
+        )
+        false_hit_rate = (
+            self.stats["false_hits"] / self.stats["hits"]
+            if self.stats["hits"] > 0
+            else 0
+        )
 
         return {
             "hit_rate": hit_rate,
             "token_saving_rate": token_saving_rate,
+            "staleness_rate": staleness_rate,
+            "false_hit_rate": false_hit_rate,
             "hits": self.stats["hits"],
             "misses": self.stats["misses"],
+            "stale_hits": self.stats["stale_hits"],
+            "false_hits": self.stats["false_hits"],
             "total_queries": total,
             "llm_calls": self.stats["llm_calls"],
             "tokens_saved": self.stats["tokens_saved"],
@@ -93,6 +118,7 @@ class ParetoValidator:
         }
 
     def reset(self) -> None:
+        """Reset validator state."""
         self.cache = ParetoCache(
             embedding_provider=self.embedding_provider,
             vector_store=InMemoryVectorStore(),
@@ -106,4 +132,7 @@ class ParetoValidator:
             "tokens_saved": 0,
             "total_tokens": 0,
             "llm_calls": 0,
+            "stale_hits": 0,
+            "false_hits": 0,
         }
+        self._volatility_clf = VolatilityClassifier()

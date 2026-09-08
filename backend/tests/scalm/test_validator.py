@@ -10,12 +10,12 @@ admitted.
 The fix: after warmup, each miss triggers _compute_pattern_for_query()
 which clusters the new query with existing entries via DBSCAN, computes a
 TSR proxy per pattern, and assigns rank by percentile (top 25 % → HIGH,
-next 25 % → MID, bottom 50 % → LOW).  RankBasedAdmissionPolicy then
+next 50 % → MID, bottom 25 % → LOW).  RankBasedAdmissionPolicy then
 correctly admits HIGH/MID entries.
 """
-from backend.scalm.validator import SCALMValidator
+from backend.scalm.validator import SCALMValidator, _assign_ranks_by_percentile
 from backend.embedding.mock_embedding import MockEmbeddingProvider
-from backend.domain.entities import PatternRank
+from backend.domain.entities import PatternRank, SemanticPattern
 
 
 def _make_validator(capacity: int = 10) -> SCALMValidator:
@@ -166,3 +166,61 @@ class TestRankAssignment:
         assert pattern.rank in (PatternRank.HIGH, PatternRank.MID, PatternRank.LOW)
         assert pattern.token_saving_ratio >= 0.0
         assert len(pattern.centroid) > 0
+
+
+    class TestRankPercentileDistribution:
+        """
+        Regression tests for the rank-percentile bug.
+
+        The paper's buckets are top 25 % → HIGH, next 50 % → MID, bottom
+        25 % → LOW.  An earlier implementation used a 50 % mid boundary,
+        which produced HIGH=25 %, MID=25 %, LOW=50 % — twice as many LOW
+        patterns as the paper intends, making SCALM stricter than designed.
+        """
+
+        def _patterns(self, n: int) -> list[SemanticPattern]:
+            """n patterns with strictly increasing TSR (0..n-1)."""
+            return [
+                SemanticPattern(
+                    pattern_id=f"p{i}",
+                    round_index=1,
+                    centroid=[0.0],
+                    member_entry_ids=[f"e{i}"],
+                    token_saving_ratio=float(i),
+                )
+                for i in range(n)
+            ]
+
+        def test_distribution_matches_paper_buckets(self):
+            """n=100 → HIGH=25, MID=50, LOW=25 (not HIGH=25, MID=25, LOW=50)."""
+            patterns = self._patterns(100)
+            _assign_ranks_by_percentile(patterns)
+
+            counts = {PatternRank.HIGH: 0, PatternRank.MID: 0, PatternRank.LOW: 0}
+            for p in patterns:
+                counts[p.rank] += 1
+
+            assert counts == {
+                PatternRank.HIGH: 25,
+                PatternRank.MID: 50,
+                PatternRank.LOW: 25,
+            }, f"Expected HIGH=25, MID=50, LOW=25, got {counts}"
+
+        def test_high_gets_highest_tsr(self):
+            """The top-25 % TSR patterns must be HIGH."""
+            patterns = self._patterns(100)
+            _assign_ranks_by_percentile(patterns)
+
+            high_tsrs = sorted(
+                p.token_saving_ratio for p in patterns if p.rank == PatternRank.HIGH
+            )
+            low_tsrs = sorted(
+                p.token_saving_ratio for p in patterns if p.rank == PatternRank.LOW
+            )
+            assert min(high_tsrs) > max(low_tsrs)
+
+        def test_small_n_still_has_high(self):
+            """Even with a single pattern, it must be HIGH (not LOW)."""
+            patterns = self._patterns(1)
+            _assign_ranks_by_percentile(patterns)
+            assert patterns[0].rank == PatternRank.HIGH

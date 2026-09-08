@@ -24,6 +24,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from backend.baselines.gptcache import GPTCache
+from backend.classifier.volatility_classifier import VolatilityClassifier
 from backend.embedding.sentence_transformer_provider import (
     SentenceTransformerEmbeddingProvider,
 )
@@ -69,7 +70,12 @@ def run_gptcache(qa_pairs, embedder, capacity: int, threshold: float) -> dict:
         eviction="lfu",
     )
     token_counter = SimpleTokenCounter()
-    stats = {"hits": 0, "misses": 0, "tokens_saved": 0, "total_tokens": 0}
+    vol_clf = VolatilityClassifier()
+    stats = {
+        "hits": 0, "misses": 0,
+        "tokens_saved": 0, "total_tokens": 0,
+        "stale_hits": 0, "false_hits": 0,
+    }
 
     for query, response in qa_pairs[:WARMUP_COUNT]:
         cache.store(query, response)
@@ -81,19 +87,31 @@ def run_gptcache(qa_pairs, embedder, capacity: int, threshold: float) -> dict:
         if result.hit:
             stats["hits"] += 1
             stats["tokens_saved"] += response_tokens
+            # Quality metrics: stale if matched entry's query is volatile,
+            # false if similarity below threshold (defensive).
+            entry_query = getattr(result.entry, "query_text", None)
+            if entry_query and vol_clf.volatility_score(entry_query) > 0.0:
+                stats["stale_hits"] += 1
+            if result.similarity is not None and result.similarity < threshold:
+                stats["false_hits"] += 1
         else:
             stats["misses"] += 1
             cache.store(query, response)
 
     total = stats["hits"] + stats["misses"]
+    hits = stats["hits"]
     return {
         "hit_rate": stats["hits"] / total if total else 0,
         "token_saving_rate": (
             stats["tokens_saved"] / stats["total_tokens"]
             if stats["total_tokens"] else 0
         ),
+        "staleness_rate": stats["stale_hits"] / hits if hits else 0,
+        "false_hit_rate": stats["false_hits"] / hits if hits else 0,
         "hits": stats["hits"],
         "misses": stats["misses"],
+        "stale_hits": stats["stale_hits"],
+        "false_hits": stats["false_hits"],
         "total_queries": total,
         "tokens_saved": stats["tokens_saved"],
         "total_tokens": stats["total_tokens"],
@@ -123,7 +141,10 @@ def run_pareto(qa_pairs, embedder, capacity: int, threshold: float) -> dict:
 def print_results(name: str, results: dict) -> None:
     print(f"{name:<12} hit={results['hit_rate']:.3f}   "
           f"token_saving={results['token_saving_rate']:.3f}   "
-          f"(hits={results['hits']}, misses={results['misses']})")
+          f"staleness={results.get('staleness_rate', 0):.3f}   "
+          f"false_hit={results.get('false_hit_rate', 0):.3f}   "
+          f"(hits={results['hits']}, stale={results.get('stale_hits', 0)}, "
+          f"false={results.get('false_hits', 0)}, misses={results['misses']})")
 
 
 def main() -> None:
@@ -171,7 +192,10 @@ def main() -> None:
     print("conservative (rejects dominated candidates), which trades raw hit")
     print("ratio for lower false-hit risk. SCALM's number reflects its real")
     print("clustering-driven rank admission (the frozen-after-warmup bug is")
-    print("fixed). If Pareto loses on a metric, that is the honest result.")
+    print("fixed). Staleness_rate: fraction of hits where the matched entry's")
+    print("query is volatile (temporal/personal). False_hit_rate: fraction of")
+    print("hits where similarity was below the configured threshold (defensive).")
+    print("If Pareto loses on a metric, that is the honest result.")
 
 
 if __name__ == "__main__":

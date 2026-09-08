@@ -7,8 +7,8 @@ Rank assignment (the fix for the earlier freeze bug):
     the new query's embedding with all existing cache entries using
     DBSCANRoundClustering.  A token-saving-ratio (TSR) proxy is computed
     per pattern (average total_token_count of its member entries), and
-    patterns are ranked by percentile: top 25 % → HIGH, next 25 % → MID,
-    bottom 50 % → LOW.  The new query's pattern is stored with this rank,
+    patterns are ranked by percentile: top 25 % → HIGH, next 50 % → MID,
+    bottom 25 % → LOW.  The new query's pattern is stored with this rank,
     so RankBasedAdmissionPolicy correctly admits HIGH/MID entries even
     when the cache is full.
 """
@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from backend.cache.admission import RankBasedAdmissionPolicy
 from backend.cache.eviction import RankSeededLFUEviction
 from backend.cache.scalm_cache import ScalmCache
+from backend.classifier.volatility_classifier import VolatilityClassifier
 from backend.domain.entities import PatternRank, SemanticPattern
 from backend.embedding.token_counter import SimpleTokenCounter
 from backend.scalm.clustering import DBSCANRoundClustering
@@ -77,7 +78,10 @@ class SCALMValidator:
             "tokens_saved": 0,
             "total_tokens": 0,
             "llm_calls": 0,
+            "stale_hits": 0,
+            "false_hits": 0,
         }
+        self._volatility_clf = VolatilityClassifier()
 
     # ------------------------------------------------------------------
     # Internal: clustering + TSR-based rank assignment
@@ -98,7 +102,7 @@ class SCALMValidator:
         the paper's Eq. 4 TSR; see ``backend/pareto/objectives.py``
         docstring for rationale.
 
-        Rank thresholds: top 25 % → HIGH, next 25 % → MID, bottom 50 %
+        Rank thresholds: top 25 % → HIGH, next 50 % → MID, bottom 25 %
         → LOW.  When there is only one pattern it receives HIGH (the
         minimum).
         """
@@ -156,20 +160,7 @@ class SCALMValidator:
             )
 
         # Rank all patterns by TSR (descending) — percentile buckets.
-        sorted_patterns = sorted(
-            patterns, key=lambda p: p.token_saving_ratio, reverse=True
-        )
-        n = len(sorted_patterns)
-        high_cutoff = max(1, math.ceil(n * 0.25))
-        mid_cutoff = max(high_cutoff + 1, math.ceil(n * 0.50))
-
-        for i, pat in enumerate(sorted_patterns):
-            if i < high_cutoff:
-                pat.rank = PatternRank.HIGH
-            elif i < mid_cutoff:
-                pat.rank = PatternRank.MID
-            else:
-                pat.rank = PatternRank.LOW
+        _assign_ranks_by_percentile(patterns)
 
         return target
 
@@ -209,6 +200,17 @@ class SCALMValidator:
             if result.hit:
                 self.stats["hits"] += 1
                 self.stats["tokens_saved"] += response_tokens
+                # Quality audit on the hit: a hit is "stale" if the
+                # matched entry's query is volatile (TEMPORAL/PERSONAL —
+                # its answer is likely to go stale or be user-specific),
+                # and "false" if the hit's similarity is below the
+                # configured threshold (shouldn't happen, but defensive).
+                if self._volatility_clf.volatility_score(
+                    result.entry.query_text
+                ) > 0.0:
+                    self.stats["stale_hits"] += 1
+                if result.similarity is not None and result.similarity < self.threshold:
+                    self.stats["false_hits"] += 1
             else:
                 self.stats["misses"] += 1
                 self.stats["llm_calls"] += 1
@@ -227,6 +229,12 @@ class SCALMValidator:
             if self.stats["total_tokens"] > 0
             else 0
         )
+        staleness_rate = (
+            self.stats["stale_hits"] / self.stats["hits"] if self.stats["hits"] > 0 else 0
+        )
+        false_hit_rate = (
+            self.stats["false_hits"] / total if total > 0 else 0
+        )
 
         return {
             "hit_rate": hit_rate,
@@ -237,6 +245,10 @@ class SCALMValidator:
             "llm_calls": self.stats["llm_calls"],
             "tokens_saved": self.stats["tokens_saved"],
             "total_tokens": self.stats["total_tokens"],
+            "stale_hits": self.stats["stale_hits"],
+            "false_hits": self.stats["false_hits"],
+            "staleness_rate": staleness_rate,
+            "false_hit_rate": false_hit_rate,
         }
 
     def reset(self):
@@ -257,4 +269,31 @@ class SCALMValidator:
             "tokens_saved": 0,
             "total_tokens": 0,
             "llm_calls": 0,
+            "stale_hits": 0,
+            "false_hits": 0,
         }
+
+
+def _assign_ranks_by_percentile(patterns: list[SemanticPattern]) -> None:
+    """
+    Assign HIGH/MID/LOW ranks by TSR percentile, matching the paper's
+    buckets: top 25 % → HIGH, next 50 % → MID, bottom 25 % → LOW.
+
+    (mid_cutoff is the top-75 % boundary, NOT 50 % — a 50 % boundary
+    would give HIGH=25 %, MID=25 %, LOW=50 %, making SCALM twice as
+    strict as the paper intends.)
+    """
+    sorted_patterns = sorted(
+        patterns, key=lambda p: p.token_saving_ratio, reverse=True
+    )
+    n = len(sorted_patterns)
+    high_cutoff = max(1, math.ceil(n * 0.25))
+    mid_cutoff = max(high_cutoff + 1, math.ceil(n * 0.75))
+
+    for i, pat in enumerate(sorted_patterns):
+        if i < high_cutoff:
+            pat.rank = PatternRank.HIGH
+        elif i < mid_cutoff:
+            pat.rank = PatternRank.MID
+        else:
+            pat.rank = PatternRank.LOW
