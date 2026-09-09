@@ -73,11 +73,33 @@ class ParetoValidator:
                 self.stats["hits"] += 1
                 self.stats["tokens_saved"] += response_tokens
 
-                # Quality: track stale and false hits
+                # Quality: track stale and false hits.
+                #
+                # BUG FIX: this used to compare result.similarity against
+                # self.similarity_threshold (a fixed 0.90 reference), but
+                # ParetoCache.lookup() actually decides hit/miss against
+                # its own ADAPTIVE per-query threshold (domain + volatility
+                # aware -- see pareto/cache.py and pareto/threshold.py),
+                # which it returns as result.threshold_used. Comparing
+                # against the wrong (fixed) reference flagged legitimate
+                # hits as "false" whenever the adaptive threshold had been
+                # lowered below 0.90 for that query -- this produced a
+                # non-zero false_hit_rate that was a pure measurement
+                # artifact of the adaptive-threshold mechanism, not a real
+                # quality difference. GPTCache/SCALM use one fixed
+                # threshold throughout, so they could never trigger this
+                # bug, which is why only Pareto ever showed a nonzero
+                # false_hit_rate. Now compares against the threshold that
+                # was ACTUALLY used to accept the hit.
                 entry_query = getattr(result.entry, "query_text", None)
                 if entry_query and self._volatility_clf.volatility_score(entry_query) > 0.0:
                     self.stats["stale_hits"] += 1
-                if result.similarity is not None and result.similarity < self.similarity_threshold:
+                effective_threshold = (
+                    result.threshold_used
+                    if result.threshold_used is not None
+                    else self.similarity_threshold
+                )
+                if result.similarity is not None and result.similarity < effective_threshold:
                     self.stats["false_hits"] += 1
             else:
                 self.stats["misses"] += 1

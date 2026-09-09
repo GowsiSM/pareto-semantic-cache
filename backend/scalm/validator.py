@@ -233,7 +233,14 @@ class SCALMValidator:
             self.stats["stale_hits"] / self.stats["hits"] if self.stats["hits"] > 0 else 0
         )
         false_hit_rate = (
-            self.stats["false_hits"] / total if total > 0 else 0
+            # BUG FIX: was false_hits / total (all queries). A "false hit
+            # rate" should be a fraction of HITS (what fraction of the
+            # hits we returned were bad), matching pareto/validator.py's
+            # definition -- dividing by total silently deflated this
+            # metric here relative to Pareto's, making any cross-system
+            # comparison of false_hit_rate invalid even before the
+            # separate adaptive-threshold bug (see pareto/validator.py).
+            self.stats["false_hits"] / self.stats["hits"] if self.stats["hits"] > 0 else 0
         )
 
         return {

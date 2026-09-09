@@ -165,21 +165,36 @@ def main() -> None:
         return
 
     rho = spearman_rho(tsr_values, volatility_values)
-        n = len(tsr_values)
+    n = len(tsr_values)
 
-        print()
-        print(f"Patterns analyzed: {n}")
-        print(f"Spearman rho (TSR rank vs. volatility): {rho:.3f}")
-        # Approximate significance threshold for Spearman rho at alpha=0.05
-        # (two-tailed): |rho| >= 1.96 / sqrt(n - 1). With n=5 that is ~0.98;
-        # with n=100 it is ~0.20. Report it so the reader can judge whether
-        # the correlation is meaningful.
-        sig_threshold = 1.96 / (n - 1) ** 0.5 if n > 2 else 1.0
-        print(f"Significance threshold (|rho| >= {sig_threshold:.3f} at alpha=0.05): "
-              f"{'MET' if abs(rho) >= sig_threshold else 'NOT MET'}")
-        print()
+    print()
+    print(f"Patterns analyzed: {n}")
+    print(f"Spearman rho (TSR rank vs. volatility): {rho:.3f}")
+    # Approximate significance threshold for Spearman rho at alpha=0.05
+    # (two-tailed): |rho| >= 1.96 / sqrt(n - 1). With n=5 that is ~0.98;
+    # with n=100 it is ~0.20. Report it so the reader can judge whether
+    # the correlation is meaningful.
+    sig_threshold = 1.96 / (n - 1) ** 0.5 if n > 2 else 1.0
+    is_significant = abs(rho) >= sig_threshold
+    print(f"Significance threshold (|rho| >= {sig_threshold:.3f} at alpha=0.05): "
+          f"{'MET' if is_significant else 'NOT MET'}")
+    print()
+
+    # BUG FIX: this used to print the significance check above and then
+    # interpret rho's sign/magnitude completely independently below,
+    # meaning a statistically meaningless correlation (e.g. n=5, where
+    # almost any rho fails to reach significance) could still be reported
+    # as "supporting the premise." This is precisely how an earlier n=5
+    # result got reported as confirming evidence when it was noise. The
+    # interpretation now checks is_significant FIRST.
     print("Interpretation (PARETO_DESIGN.md section 5):")
-    if rho < -0.3:
+    if not is_significant:
+        print(f"  NOT STATISTICALLY SIGNIFICANT at n={n} (need |rho| >= {sig_threshold:.3f}, "
+              f"got {abs(rho):.3f}).")
+        print("  Do not report this correlation as evidence for or against the Pareto")
+        print("  premise. Re-run with more patterns (lower DBSCAN eps and/or a larger")
+        print("  sample) before drawing any conclusion from the sign or magnitude of rho.")
+    elif rho < -0.3:
         print("  Negative correlation: high-TSR patterns tend to be volatile.")
         print("  Supports the Pareto extension's premise -- a single-objective")
         print("  cache that maximizes token savings alone would over-cache")
@@ -197,6 +212,7 @@ def main() -> None:
         print("  Weak correlation: TSR and volatility are largely independent")
         print("  on this dataset, so a multi-objective frontier is meaningful")
         print("  (neither objective dominates the other).")
+
 
 
 if __name__ == "__main__":
