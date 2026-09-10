@@ -18,9 +18,13 @@ Method (mirrors the synthetic audit):
     5. Compute the Spearman rank correlation between TSR and volatility.
 
 Interpretation thresholds (PARETO_DESIGN.md section 5):
-    rho < 0.3  -> premise holds (objectives independent; real trade-off)
-    rho > 0.7  -> premise likely does not hold (no meaningful conflict)
-    in between -> a real but modest trade-off; report the value itself.
+    rho > 0.3  -> supports premise (high-TSR content is volatile;
+                   SCALM would over-cache risky content)
+    rho < -0.3 -> undermines premise (high-TSR content is stable;
+                   SCALM already avoids volatile content)
+    |rho| <= 0.3 -> objectives largely independent on this dataset;
+                   a multi-objective frontier is meaningful but the
+                   trade-off is not yet empirically demonstrated.
 
 This is an analysis workflow, not a reusable backend component, so it
 lives in scripts/ rather than backend/.
@@ -194,24 +198,22 @@ def main() -> None:
         print("  Do not report this correlation as evidence for or against the Pareto")
         print("  premise. Re-run with more patterns (lower DBSCAN eps and/or a larger")
         print("  sample) before drawing any conclusion from the sign or magnitude of rho.")
-    elif rho < -0.3:
-        print("  Negative correlation: high-TSR patterns tend to be volatile.")
+    elif rho > 0.3:
+        print("  Positive correlation: high-TSR patterns tend to be volatile.")
         print("  Supports the Pareto extension's premise -- a single-objective")
         print("  cache that maximizes token savings alone would over-cache")
-        print("  volatile content.")
-    elif rho > 0.7:
-        print("  Strong positive correlation: high-TSR patterns tend to be stable.")
-        print("  The honest finding is 'no meaningful conflict found in practice'")
-        print("  -- a legitimate, reportable negative result, not a failure of")
-        print("  the implementation.")
-    elif rho > 0.3:
-        print("  Positive correlation: high-TSR patterns tend to be stable.")
-        print("  The two objectives align here; Pareto's benefit is less clear")
-        print("  on this dataset.")
+        print("  volatile content. Pareto's dual-objective frontier can exploit")
+        print("  this conflict.")
+    elif rho < -0.3:
+        print("  Negative correlation: high-TSR patterns tend to be stable.")
+        print("  Undermines the Pareto premise -- SCALM's token-savings ranking")
+        print("  already naturally avoids volatile content. The trade-off Pareto")
+        print("  was designed to exploit does not appear in this dataset.")
     else:
         print("  Weak correlation: TSR and volatility are largely independent")
         print("  on this dataset, so a multi-objective frontier is meaningful")
-        print("  (neither objective dominates the other).")
+        print("  (neither objective dominates the other), but the rank-volatility")
+        print("  conflict that motivates Pareto is not strongly demonstrated here.")
 
 
 
