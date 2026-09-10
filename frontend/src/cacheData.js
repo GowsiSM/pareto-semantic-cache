@@ -30,6 +30,7 @@ export const INITIAL_CACHE = [
     embedding: [0.82, 0.41, -0.12, 0.67, 0.29, -0.54, 0.11, 0.78],
     tokenSaving: 82,
     volatility: 0.1,
+    domain: "code",
     hits: 14,
   },
   {
@@ -40,6 +41,7 @@ export const INITIAL_CACHE = [
     embedding: [0.74, 0.38, -0.09, 0.61, 0.33, -0.48, 0.17, 0.71],
     tokenSaving: 76,
     volatility: 0.3,
+    domain: "code",
     hits: 9,
   },
   {
@@ -50,6 +52,7 @@ export const INITIAL_CACHE = [
     embedding: [0.31, -0.22, 0.55, 0.18, 0.44, 0.62, -0.33, 0.25],
     tokenSaving: 65,
     volatility: 0.0,
+    domain: "general",
     hits: 6,
   },
   {
@@ -60,6 +63,7 @@ export const INITIAL_CACHE = [
     embedding: [0.79, 0.44, -0.1, 0.65, 0.31, -0.51, 0.13, 0.75],
     tokenSaving: 79,
     volatility: 0.2,
+    domain: "code",
     hits: 11,
   },
 ];
@@ -132,6 +136,44 @@ export const SIMILARITY_MAP = {
 
 export const SIMILARITY_THRESHOLD = 0.85;
 
+// ─── ADAPTIVE THRESHOLD ADAPTER (mirrors backend/pareto/threshold.py) ──────
+// The real backend lowers the threshold for low-volatility / safe domains
+// and raises it for volatile ones.  This is the project's own extension —
+// SCALM uses a fixed threshold (0.90) throughout.
+const DOMAIN_TAU_ADJUSTMENTS = {
+  general: 0.0,
+  medical: 0.04,
+  code: 0.03,
+  legal: 0.05,
+};
+
+/**
+ * Compute an adaptive similarity threshold for a query.
+ * Mirrors backend.pareto.threshold.AdaptiveThresholdAdapter.
+ */
+export function computeAdaptiveThreshold(domain = "general", volatility = 0.0, beta = 0.05) {
+  const adjustment = DOMAIN_TAU_ADJUSTMENTS[domain] ?? 0.0;
+  const penalty = beta * volatility;
+  return Math.min(1.0, Math.max(0.0, SIMILARITY_THRESHOLD + adjustment - penalty));
+}
+
+// ─── DOMAIN CLASSIFIER (simplified — mirrors backend/classifier/domain_classifier.py) ──
+// Keyword-based fallback for the demo; the real backend uses a trained
+// classifier or LLM-based classifier.
+const DOMAIN_KEYWORDS = {
+  medical: ["disease", "symptom", "diagnosis", "treatment", "patient", "clinical", "drug", "therapy"],
+  code: ["function", "algorithm", "programming", "debug", "compile", "variable", "class", "api"],
+  legal: ["law", "regulation", "statute", "court", "legal", "rights", "contract", "liability"],
+};
+
+export function classifyDomain(query) {
+  const lower = query.toLowerCase();
+  for (const [domain, keywords] of Object.entries(DOMAIN_KEYWORDS)) {
+    if (keywords.some((kw) => lower.includes(kw))) return domain;
+  }
+  return "general";
+}
+
 // ─── CANDIDATE ENTRIES for cache misses (deterministic) ───────────────────
 export const CANDIDATE_ENTRIES = {
   "What is quantum computing?": {
@@ -139,12 +181,14 @@ export const CANDIDATE_ENTRIES = {
     query: "What is quantum computing?",
     tokenSaving: 312,
     volatility: 0.0,
+    domain: "general",
   },
   "How does blockchain work?": {
     id: "C5",
     query: "How does blockchain work?",
     tokenSaving: 287,
     volatility: 0.4,
+    domain: "code",
   },
 };
 

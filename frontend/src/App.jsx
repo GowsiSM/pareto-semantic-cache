@@ -11,6 +11,8 @@ import {
   dominates,
   computeParetoFrontier,
   pruneByHypervolume,
+  computeAdaptiveThreshold,
+  classifyDomain,
 } from "./cacheData";
 
 // ─── STEP PIPELINE ──────────────────────────────────────────────────────
@@ -49,6 +51,9 @@ function App() {
   const [logs, setLogs] = useState([]);
   const [selectedDemoQuery, setSelectedDemoQuery] = useState(DEMO_QUERIES[0]);
   const [showDetailedMetrics, setShowDetailedMetrics] = useState(false);
+  const [queryDomain, setQueryDomain] = useState("general");
+  const [adaptiveThreshold, setAdaptiveThreshold] = useState(SIMILARITY_THRESHOLD);
+  const [systemMetrics, setSystemMetrics] = useState(null);
 
   const step = steps[stepIndex];
 
@@ -112,19 +117,27 @@ function App() {
     setStepIndex(next);
 
     if (steps[next] === "embedding") {
-      addLog("🧠 Semantic embedding generated.");
+      // Classify domain for this query (mirrors backend/domain_classifier.py)
+      const domain = classifyDomain(query);
+      setQueryDomain(domain);
+      addLog(`🧠 Semantic embedding generated. Domain classified as: ${domain}`);
     }
 
     if (steps[next] === "search") {
       const bestMatchScore = bestMatch?.match ?? 0;
+      // Compute adaptive threshold (mirrors backend/pareto/threshold.py)
+      const vol = bestMatch?.volatility ?? 0.0;
+      const thresh = computeAdaptiveThreshold(queryDomain, vol);
+      setAdaptiveThreshold(thresh);
       addLog(
-        `🔍 Similarity search completed. Best similarity: ${bestMatchScore.toFixed(2)}.`,
+        `🔍 Similarity search completed. Best similarity: ${bestMatchScore.toFixed(2)}. Adaptive threshold: ${thresh.toFixed(3)}`,
       );
     }
 
     if (steps[next] === "decision") {
       const matchScore = bestMatch?.match ?? 0;
-      const isHit = matchScore >= SIMILARITY_THRESHOLD;
+      // Use adaptive threshold instead of fixed (backend-aligned)
+      const isHit = matchScore >= adaptiveThreshold;
       setResult({
         hit: isHit,
         matched: bestMatch,
@@ -132,8 +145,8 @@ function App() {
       });
       addLog(
         isHit
-          ? "✅ CACHE HIT — cached response can be returned."
-          : "❌ CACHE MISS — sending query to LLM.",
+          ? `✅ CACHE HIT (similarity ${matchScore.toFixed(2)} ≥ threshold ${adaptiveThreshold.toFixed(3)}) — cached response returned.`
+          : `❌ CACHE MISS (similarity ${matchScore.toFixed(2)} < threshold ${adaptiveThreshold.toFixed(3)}) — sending to LLM.`,
       );
     }
 
@@ -150,6 +163,7 @@ function App() {
             ...predefinedCandidate,
             response: LLM_RESPONSES[query]?.text || LLM_RESPONSES.default.text,
             embedding: [0.5, 0.3, -0.1, 0.4, 0.2, -0.3, 0.1, 0.5],
+            domain: classifyDomain(query),
             hits: 1,
           };
         } else {
@@ -161,20 +175,48 @@ function App() {
             embedding: [0.5, 0.3, -0.1, 0.4, 0.2, -0.3, 0.1, 0.5],
             tokenSaving: Math.round(200 + Math.random() * 150),
             volatility: Math.round(Math.random() * 100) / 100,
+            domain: classifyDomain(query),
             hits: 0,
           };
         }
 
         setResult((prev) => ({ ...prev, candidate: newCandidate }));
-        addLog("🤖 LLM response generated. Candidate cache entry created.");
+        addLog(`🤖 LLM response generated. Domain: ${newCandidate.domain}. Candidate cache entry created.`);
       }
     }
 
     if (steps[next] === "evaluation") {
+      const tsr = candidate?.tokenSaving ?? 0;
+      const vol = candidate?.volatility ?? 0;
+      const domain = classifyDomain(candidate?.query ?? query);
       addLog(
-        `📊 Candidate evaluated: token_saving_proxy=${candidate?.tokenSaving ?? 0}, volatility=${candidate?.volatility ?? 0}`,
+        `📊 Candidate evaluated: TSR_proxy=${tsr}, volatility=${vol.toFixed(2)}, domain=${domain}`,
       );
       setShowDetailedMetrics(true);
+
+      // Compute backend-aligned system metrics (cumulative across simulation)
+      setSystemMetrics((prev) => {
+        const totalQ = (prev?.total_queries ?? 0) + 1;
+        const hits = (prev?.hits ?? 0) + (result?.hit ? 1 : 0);
+        const misses = (prev?.misses ?? 0) + (result?.hit ? 0 : 1);
+        const staleHits = (prev?.stale_hits ?? 0) + (vol > 0.5 ? 1 : 0);
+        const falseHits = (prev?.false_hits ?? 0) + 0; // no false hits in demo
+        const tokensSaved = (prev?.tokens_saved ?? 0) + (result?.hit ? tsr : 0);
+        const totalTokens = (prev?.total_tokens ?? 0) + tsr;
+        return {
+          total_queries: totalQ,
+          hits,
+          misses,
+          stale_hits: staleHits,
+          false_hits: falseHits,
+          tokens_saved: tokensSaved,
+          total_tokens: totalTokens,
+          hit_rate: hits / totalQ,
+          token_saving_ratio: totalTokens > 0 ? tokensSaved / totalTokens : 0,
+          staleness_rate: hits > 0 ? staleHits / hits : 0,
+          false_hit_rate: hits > 0 ? falseHits / hits : 0,
+        };
+      });
     }
 
     if (steps[next] === "pareto") {
@@ -224,6 +266,8 @@ function App() {
   // ─── FULL DEMO RUN ──────────────────────────────────────────────────
   function runFullDemo() {
     reset();
+    const domain = classifyDomain(query);
+    setQueryDomain(domain);
     setTimeout(() => setStepIndex(1), 100);
     setTimeout(() => setStepIndex(2), 500);
     setTimeout(() => {
@@ -236,7 +280,12 @@ function App() {
         }))
         .sort((a, b) => b.match - a.match)[0];
 
-      const isHit = bestMatchEntry?.match >= SIMILARITY_THRESHOLD;
+      // Compute adaptive threshold (backend-aligned)
+      const vol = bestMatchEntry?.volatility ?? 0.0;
+      const thresh = computeAdaptiveThreshold(domain, vol);
+      setAdaptiveThreshold(thresh);
+
+      const isHit = bestMatchEntry?.match >= thresh;
 
       if (isHit) {
         setResult({ hit: true, matched: bestMatchEntry, candidate: null });
@@ -252,6 +301,7 @@ function App() {
             ...predefinedCandidate,
             response: LLM_RESPONSES[query]?.text || LLM_RESPONSES.default.text,
             embedding: [0.5, 0.3, -0.1, 0.4, 0.2, -0.3, 0.1, 0.5],
+            domain: classifyDomain(query),
             hits: 0,
           };
         } else {
@@ -262,6 +312,7 @@ function App() {
             embedding: [0.5, 0.3, -0.1, 0.4, 0.2, -0.3, 0.1, 0.5],
             tokenSaving: 250,
             volatility: 0.15,
+            domain: classifyDomain(query),
             hits: 0,
           };
         }
@@ -295,12 +346,17 @@ function App() {
   function selectDemoQuery(demoQuery) {
     setSelectedDemoQuery(demoQuery);
     setQuery(demoQuery.text);
+    // Classify domain and compute adaptive threshold
+    const domain = classifyDomain(demoQuery.text);
+    setQueryDomain(domain);
+    setAdaptiveThreshold(computeAdaptiveThreshold(domain, 0.0));
     // Reset simulation state but KEEP the query
     setStepIndex(0);
     setResult(null);
     setLogs([]);
     setShowDetailedMetrics(false);
-    addLog(`📝 Selected: "${demoQuery.text}"`);
+    setSystemMetrics(null);
+    addLog(`📝 Selected: "${demoQuery.text}" [domain: ${domain}]`);
   }
 
   // ─── RENDER ───────────────────────────────────────────────────────────
@@ -360,19 +416,19 @@ function App() {
           <div className="section-heading">
             <div>
               <h2>2. Processing Pipeline</h2>
-              <p>SCALM foundation → Pareto-based cache decision (backend-aligned)</p>
+              <p>SCALM embedding + domain classifier → adaptive threshold → Pareto frontier admission</p>
             </div>
           </div>
 
           <div className="flow">
             {[
-              ["embedding", "Query Embedding", "SCALM"],
+              ["embedding", "Embed + Domain", "SCALM+"],
               ["search", "Similarity Search", "SCALM"],
-              ["decision", "Hit / Miss", "SCALM"],
+              ["decision", "Adaptive Threshold", "PROPOSED"],
               ["inference", "LLM Inference", "Existing"],
-              ["evaluation", "Multi-Objective Evaluation", "PROPOSED"],
+              ["evaluation", "Multi-Objective Eval", "PROPOSED"],
               ["pareto", "Pareto Skyline", "PROPOSED"],
-              ["admission", "Admission / Eviction", "PROPOSED"],
+              ["admission", "Hypervolume Eviction", "PROPOSED"],
               ["complete", "Updated Cache", "CACHE"],
             ].map(([key, title, type], i) => (
               <React.Fragment key={key}>
@@ -413,11 +469,14 @@ function App() {
               </div>
               <div className="state-box">
                 <span>Best Similarity</span>
-                <strong>{bestMatch ? bestMatch.match.toFixed(2) : "—"}</strong>
+                <strong>{bestMatch ? bestMatch.match.toFixed(3) : "—"}</strong>
               </div>
               <div className="state-box">
-                <span>Threshold</span>
-                <strong>{SIMILARITY_THRESHOLD}</strong>
+                <span>Adaptive Threshold</span>
+                <strong>{adaptiveThreshold.toFixed(3)}</strong>
+                <small className="threshold-note">
+                  base {SIMILARITY_THRESHOLD} {queryDomain !== "general" ? `+ ${queryDomain}` : ""}
+                </small>
               </div>
             </div>
 
@@ -427,9 +486,12 @@ function App() {
                   <div>
                     <strong>{item.id}</strong>
                     <span>{item.query}</span>
+                    {item.domain && (
+                      <span className="domain-badge">{item.domain}</span>
+                    )}
                   </div>
                   <div className="similarity">
-                    <span>{item.match.toFixed(2)}</span>
+                    <span>{item.match.toFixed(3)}</span>
                     <div className="bar">
                       <i style={{ width: `${item.match * 100}%` }} />
                     </div>
@@ -454,6 +516,9 @@ function App() {
                 <div className="candidate-title">
                   <strong>{candidate.id}</strong>
                   <span>Candidate Cache Entry</span>
+                  <span className="domain-badge">
+                    {candidate.domain ?? queryDomain}
+                  </span>
                   <span className="volatility-badge">
                     vol {candidate.volatility?.toFixed(2) ?? "0.00"}
                   </span>
@@ -470,14 +535,60 @@ function App() {
                   />
                   {showDetailedMetrics && (
                     <>
+                      <Metric label="Hits" value={candidate.hits || 0} />
                       <Metric
-                        label="Hits"
-                        value={candidate.hits || 0}
-                        unit=""
+                        label="Domain"
+                        value={candidate.domain ?? queryDomain}
                       />
                     </>
                   )}
                 </div>
+
+                {/* Backend-aligned evaluation metrics */}
+                {showDetailedMetrics && (
+                  <div className="eval-metrics">
+                    <h4>System Metrics (backend-aligned)</h4>
+                    <div className="metrics">
+                      <Metric
+                        label="Cache Hit Ratio"
+                        value={
+                          systemMetrics
+                            ? (systemMetrics.hit_rate * 100).toFixed(1)
+                            : "—"
+                        }
+                        unit="%"
+                      />
+                      <Metric
+                        label="Token Saving Ratio"
+                        value={
+                          systemMetrics
+                            ? (systemMetrics.token_saving_ratio * 100).toFixed(1)
+                            : "—"
+                        }
+                        unit="%"
+                      />
+                      <Metric
+                        label="Staleness Rate"
+                        value={
+                          systemMetrics
+                            ? (systemMetrics.staleness_rate * 100).toFixed(1)
+                            : "—"
+                        }
+                        unit="%"
+                      />
+                      <Metric
+                        label="False Hit Rate"
+                        value={
+                          systemMetrics
+                            ? (systemMetrics.false_hit_rate * 100).toFixed(1)
+                            : "—"
+                        }
+                        unit="%"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {candidate.response && (
                   <div className="llm-response">
                     <strong>LLM Response:</strong>
@@ -495,6 +606,7 @@ function App() {
             <div className="objective-key">
               <span>↑ Higher is better</span>
               <span>↓ Lower is better</span>
+              <span>· Adaptive threshold per domain+volatility</span>
             </div>
           </section>
         </div>
@@ -505,10 +617,10 @@ function App() {
             <div>
               <h2>5. Pareto Skyline</h2>
               <p>
-                Non-dominated entries on the two real objectives: token saving
-                proxy (higher is better) and volatility (lower is better).
-                Minimizing convention: entry A dominates B when A's vector
-                (-tokenSaving, volatility) is ≤ B's on both axes.
+                Non-dominated entries on two objectives: token saving proxy
+                (↑ higher = more tokens saved) and volatility (↓ lower = safer
+                to cache). A dominates B when A is better on at least one
+                objective and no worse on the other.
               </p>
             </div>
             <div className="legend">
@@ -581,6 +693,9 @@ function App() {
                   <div>
                     <strong>{item.id}</strong>
                     <span>{item.query}</span>
+                    {item.domain && (
+                      <span className="domain-badge">{item.domain}</span>
+                    )}
                     <span className="hits-badge">Hits: {item.hits || 0}</span>
                   </div>
                   <span
@@ -614,13 +729,13 @@ function App() {
       </main>
 
       <footer>
-        <span>SCALM-inspired semantic cache workflow</span>
+        <span>SCALM semantic cache baseline</span>
         <span>•</span>
-        <span>Pareto-based admission visualization (backend-aligned)</span>
+        <span>Pareto multi-objective admission (2 objectives: TSR, volatility)</span>
         <span>•</span>
-        <span>
-          2D Objective Space (minimizing): -Token Saving Proxy, Volatility
-        </span>
+        <span>Adaptive threshold (domain + volatility aware)</span>
+        <span>•</span>
+        <span>Hypervolume-constrained eviction</span>
       </footer>
     </div>
   );
