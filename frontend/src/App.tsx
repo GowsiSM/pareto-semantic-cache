@@ -9,13 +9,15 @@ import { ResultsTable } from "./components/ResultsTable";
 import { ResultsCharts } from "./components/ResultsCharts";
 import { ConclusionSection } from "./components/ConclusionSection";
 import { useExperiment } from "./hooks/useExperiment";
+import { useTheme } from "./hooks/useTheme";
 
 function App() {
   const experiment = useExperiment();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <div className="app">
-      <Nav />
+      <Nav theme={theme} onToggleTheme={toggleTheme} />
       <Hero />
 
       <Section
@@ -59,7 +61,7 @@ function App() {
         {experiment.status === "success" && experiment.data && (
           <>
             <ResultsTable results={experiment.data.systems} />
-            <ResultsCharts results={experiment.data.systems} />
+            <ResultsCharts results={experiment.data.systems} theme={theme} />
             <div className="run-meta">
               {experiment.data.meta.embedding_model} - {experiment.data.meta.dataset_size}{" "}
               queries - {experiment.data.meta.duration_ms}ms

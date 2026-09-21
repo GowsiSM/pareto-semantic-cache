@@ -132,7 +132,8 @@ export function RunExperimentPanel({ onRun, isLoading }: RunExperimentPanelProps
         </p>
       )}
 
-      <button type="submit" className="btn btn-primary" disabled={isLoading}>
+      <button type="submit" className="btn btn-primary btn-with-spinner" disabled={isLoading}>
+        {isLoading && <span className="spinner spinner-inverse" aria-hidden="true" />}
         {isLoading ? "Running…" : "Run experiment"}
       </button>
     </form>
