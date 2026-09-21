@@ -50,9 +50,11 @@ class ExperimentRequest(BaseModel):
 app = FastAPI(title="SemantiCache API")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    # Allow local Vite/React dev servers regardless of whether they use
+    # port 3000, 5173, or another local development port.
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

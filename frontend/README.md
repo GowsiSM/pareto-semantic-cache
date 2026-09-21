@@ -5,7 +5,9 @@ SCALM, and Pareto semantic cache admission strategies. This frontend
 contains **no cache algorithm logic** -- every number shown comes from a
 real HTTP request to your backend.
 
-The repository includes a thin FastAPI backend at `backend/api.py`.
+The repository includes a thin FastAPI backend at `backend/api.py`. Its CORS
+configuration allows local frontend development origins such as
+`http://localhost:3000` and `http://localhost:5173`.
 Nothing here fabricates or falls back to fake data -- if the API is not
 running, the UI shows a real connection error.
 
