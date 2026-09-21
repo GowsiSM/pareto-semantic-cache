@@ -5,24 +5,43 @@ SCALM, and Pareto semantic cache admission strategies. This frontend
 contains **no cache algorithm logic** -- every number shown comes from a
 real HTTP request to your backend.
 
-## Important: the backend API this frontend expects does not exist yet
-
-The Python project this frontend was built for (`pareto-semantic-cache`)
-currently exposes its validators as **CLI scripts** (`run_pareto.py`,
-`run_scalm.py`, `audit_rank_volatility.py`, etc.) -- there is no HTTP
-server anywhere in it yet. This frontend calls a REST API that you need
-to add to that backend (e.g. a thin FastAPI or Flask wrapper around the
-existing `ParetoValidator` / `SCALMValidator` / `GPTCache` classes).
-Nothing here fabricates or falls back to fake data -- if the API isn't
-running, the UI will show a real connection error, not placeholder
-numbers.
+The repository now includes a thin FastAPI wrapper around the existing
+validators at `backend/api.py`. Nothing in the frontend fabricates or falls
+back to fake data -- if the API isn't running, the UI shows a real connection
+error.
 
 ## Setup
 
 ```bash
 npm install
 cp .env.example .env
-# edit .env if your backend runs somewhere other than http://localhost:8000
+```
+
+PowerShell equivalent for the environment file:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+In a second terminal, from the project root:
+
+```bash
+pip install -r backend/requirements.txt
+python -m uvicorn backend.api:app --reload --host 0.0.0.0 --port 8000
+```
+
+Then, from `frontend/`, run the development UI:
+
+```bash
+npm run dev
+```
+
+PowerShell commands from the repository root:
+
+```powershell
+python -m pip install -r backend\requirements.txt
+python -m uvicorn backend.api:app --reload --host 0.0.0.0 --port 8000
+Set-Location frontend
 npm run dev
 ```
 
@@ -34,7 +53,7 @@ npm run preview # serve the production build locally
 
 ## Backend API Contract
 
-Your backend needs to implement two endpoints:
+The backend implements two endpoints:
 
 ### `GET /api/health`
 
@@ -96,18 +115,10 @@ On error, return a non-2xx status with:
 { "error": "short message", "detail": "optional longer detail" }
 ```
 
-**Sketch of what the backend handler needs to do** (pseudocode, not
-provided -- you asked for frontend only):
-
-```python
-# 1. Build the dataset (synthetic_dataset.generate_dataset(...) or
-#    MOSSLoader(...).get_first_turn_pairs())
-# 2. Build the embedding provider (MockEmbeddingProvider or
-#    SentenceTransformerEmbeddingProvider)
-# 3. Run all three: GPTCache, SCALMValidator, ParetoValidator, with the
-#    SAME dataset, capacity, threshold, and embedding provider instance
-# 4. Return their .run() results, renamed into the "systems" shape above
-```
+The handler loads the selected dataset, creates the selected embedding
+provider, and runs all three existing validators against the same QA pairs.
+Synthetic/mock runs are fully offline; MOSS/sentence-transformer runs require
+the dataset and model dependencies.
 
 CORS: since this frontend runs on a different origin/port than the
 backend during development, make sure your API sends
