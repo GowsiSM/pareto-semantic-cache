@@ -46,16 +46,29 @@ export function RunExperimentPanel({ onRun, isLoading }: RunExperimentPanelProps
       }}
     >
       <div className="form-grid">
-        <label className="form-field">
+        <fieldset className="form-field dataset-field">
           <span>Dataset</span>
-          <select
-            value={form.dataset}
-            onChange={(e) => handleDatasetChange(e.target.value as DatasetOption)}
-          >
-            <option value="synthetic">Synthetic (offline, mock embeddings)</option>
-            <option value="moss">MOSS (real data, real embeddings)</option>
-          </select>
-        </label>
+          <div className="dataset-options" role="radiogroup" aria-label="Dataset">
+            <button
+              type="button"
+              className={`dataset-option ${form.dataset === "synthetic" ? "is-selected" : ""}`}
+              onClick={() => handleDatasetChange("synthetic")}
+              aria-pressed={form.dataset === "synthetic"}
+            >
+              <strong>Synthetic</strong>
+              <small>offline / mock</small>
+            </button>
+            <button
+              type="button"
+              className={`dataset-option ${form.dataset === "moss" ? "is-selected" : ""}`}
+              onClick={() => handleDatasetChange("moss")}
+              aria-pressed={form.dataset === "moss"}
+            >
+              <strong>MOSS</strong>
+              <small>real data / embeddings</small>
+            </button>
+          </div>
+        </fieldset>
 
         <label className="form-field">
           <span>Number of queries</span>
