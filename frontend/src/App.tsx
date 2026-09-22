@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import { Nav } from "./components/Nav";
 import { Hero } from "./components/Hero";
 import { Section } from "./components/Section";
@@ -14,14 +15,29 @@ import { useTheme } from "./hooks/useTheme";
 function App() {
   const experiment = useExperiment();
   const { theme, toggleTheme } = useTheme();
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({
+    architecture: true,
+    "how-pareto-works": true,
+    "run-experiment": true,
+    results: true,
+    conclusion: true,
+  });
+
+  const handleNavigate = useCallback((id: string) => {
+    setExpanded((previous) => ({ ...previous, [id]: !previous[id] }));
+    requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
 
   return (
     <div className="app">
-      <Nav theme={theme} onToggleTheme={toggleTheme} />
+      <Nav theme={theme} onToggleTheme={toggleTheme} onNavigate={handleNavigate} />
       <Hero />
 
       <Section
         id="architecture"
+        expanded={expanded.architecture}
         eyebrow="Architecture"
         title="SCALM vs. Pareto"
         description="Both extend the same semantic-cache pipeline (embed -> similarity search -> hit/miss). They differ only in how a cache-miss candidate is admitted and what gets evicted under capacity."
@@ -31,6 +47,7 @@ function App() {
 
       <Section
         id="how-pareto-works"
+        expanded={expanded["how-pareto-works"]}
         eyebrow="Mechanism"
         title="How Pareto admission works"
         description="Two objectives, no fixed weight between them."
@@ -40,6 +57,7 @@ function App() {
 
       <Section
         id="run-experiment"
+        expanded={expanded["run-experiment"]}
         eyebrow="Live demo"
         title="Run an experiment"
         description="This calls the backend API directly. See the README for the API contract the backend must implement."
@@ -49,6 +67,7 @@ function App() {
 
       <Section
         id="results"
+        expanded={expanded.results}
         eyebrow="Results"
         title="Measured comparison"
         description="Populated only from the backend's response to the most recent run."
@@ -72,6 +91,7 @@ function App() {
 
       <Section
         id="conclusion"
+        expanded={expanded.conclusion}
         eyebrow="Interpretation"
         title="Trade-offs, not a winner"
         description="Generated from the actual returned metrics each run."
