@@ -164,8 +164,20 @@ decision summary visible. Guided stages jump to real views; they do not
 simulate streaming or insert artificial delays. Reset clears loaded results
 and restores the replay controls to their defaults.
 
+The measured-results view focuses on the SCALM–SPARC head-to-head. GPTCache
+is still run by the backend and is available through the “Show GPTCache
+reference baseline” checkbox; the UI labels it as a separate reference
+because its unconditional-admission policy differs from the staged comparison.
+The decision-trace control defaults to replay event 25 (after warmup) so the
+cache is likely to be full, but the returned before-event occupancy indicates
+whether it actually was.
+
 The current backend does not expose per-query latency or ground-truth answer
 freshness. Aggregate staleness values follow the validators' classifier-based
 definition. Synthetic embeddings are lexical test embeddings and should not
 be presented as real semantic-model experimental evidence; use MOSS with the
 configured SentenceTransformer when reporting real-data results.
+
+The trace distinguishes admission from Pareto-frontier membership: an
+under-capacity cache admits candidates unconditionally, even if a candidate is
+dominated. A rejected candidate does not evict an entry.

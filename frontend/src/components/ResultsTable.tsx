@@ -62,8 +62,8 @@ export function ResultsTable({
         </tr>
         <tr>
           <td>Hits / Misses</td>
-          {SYSTEM_ORDER.map((id) => (
-            <td key={id}>
+          {systems.map((id) => (
+            <td key={id} className={SYSTEM_COL_CLASS[id]}>
               {results[id].hits} / {results[id].misses}
             </td>
           ))}
