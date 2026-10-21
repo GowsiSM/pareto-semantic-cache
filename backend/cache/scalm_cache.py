@@ -24,6 +24,7 @@ class LookupResult:
     hit: bool
     entry: Optional[CacheEntry]
     similarity: Optional[float]
+    nearest_entry: Optional[CacheEntry] = None
 
 
 class ScalmCache:
@@ -76,10 +77,10 @@ class ScalmCache:
         if similarity >= self._threshold:
             entry.record_hit()
             self._hit_count += 1
-            return LookupResult(hit=True, entry=entry, similarity=similarity)
+            return LookupResult(hit=True, entry=entry, similarity=similarity, nearest_entry=entry)
 
         self._miss_count += 1
-        return LookupResult(hit=False, entry=None, similarity=similarity)
+        return LookupResult(hit=False, entry=None, similarity=similarity, nearest_entry=entry)
 
     def store(
         self,
@@ -123,6 +124,10 @@ class ScalmCache:
     @property
     def size(self) -> int:
         return self._store.size()
+
+    @property
+    def entries(self) -> list[CacheEntry]:
+        return self._store.all_entries()
 
     @property
     def hit_rate(self) -> float:

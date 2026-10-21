@@ -72,6 +72,42 @@ describe("ConclusionSection", () => {
     expect(screen.queryByText(/best system/i)).not.toBeInTheDocument();
   });
 
+  it("reports tied metrics as ties instead of assigning the first system a false win", () => {
+    render(<ConclusionSection results={makeResults({})} />);
+
+    expect(screen.getAllByText(/tied for the best/)).toHaveLength(4);
+    expect(screen.getByText(/No metric had a unique leader in this run/)).toBeInTheDocument();
+  });
+
+  it("can summarize the SCALM-versus-Pareto head-to-head without GPTCache", () => {
+    const results = makeResults({
+      scalm: {
+        hit_rate: 0.25,
+        token_saving_rate: 0.21,
+        staleness_rate: 0.12,
+        false_hit_rate: 0,
+        hits: 125,
+        misses: 375,
+        total_queries: 500,
+      },
+      pareto: {
+        hit_rate: 0.2,
+        token_saving_rate: 0.18,
+        staleness_rate: 0,
+        false_hit_rate: 0,
+        hits: 100,
+        misses: 400,
+        total_queries: 500,
+      },
+    });
+    render(<ConclusionSection results={results} systems={["scalm", "pareto"]} />);
+
+    const hitRatioItem = screen.getAllByRole("listitem").find((item) => item.textContent?.includes("hit ratio"));
+    expect(hitRatioItem?.textContent).toContain("SCALM (baseline)");
+    expect(hitRatioItem?.textContent).toContain("25.0%");
+    expect(screen.queryByText(/GPTCache/)).not.toBeInTheDocument();
+  });
+
   it("changes its output when the underlying results change (proving it isn't a fixed narrative)", () => {
     const resultsA = makeResults({
       scalm: {

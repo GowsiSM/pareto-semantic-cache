@@ -1,9 +1,16 @@
 import { useState } from "react";
-import type { DatasetOption, EmbeddingOption, ExperimentRequest } from "../api/types";
+import type {
+  DatasetOption,
+  EmbeddingOption,
+  ExperimentRequest,
+  TraceExperimentRequest,
+} from "../api/types";
 
 interface RunExperimentPanelProps {
   onRun: (request: ExperimentRequest) => void;
   isLoading: boolean;
+  onTrace?: (request: TraceExperimentRequest) => void;
+  isTraceLoading?: boolean;
 }
 
 const DEFAULTS: ExperimentRequest = {
@@ -16,10 +23,23 @@ const DEFAULTS: ExperimentRequest = {
   seed: 42,
 };
 
-export function RunExperimentPanel({ onRun, isLoading }: RunExperimentPanelProps) {
+export function RunExperimentPanel({
+  onRun,
+  isLoading,
+  onTrace,
+  isTraceLoading = false,
+}: RunExperimentPanelProps) {
   const [form, setForm] = useState<ExperimentRequest>(DEFAULTS);
+  const [traceIndex, setTraceIndex] = useState(25);
+  const [traceQuery, setTraceQuery] = useState("");
+  const [traceAnswer, setTraceAnswer] = useState("");
 
   const isMoss = form.dataset === "moss";
+  const replayCount = Math.max(0, form.n_queries - form.warmup_count);
+  const selectedTraceIndex = Math.min(traceIndex, Math.max(0, replayCount - 1));
+  const hasCustomQuery = traceQuery.trim().length > 0;
+  const hasCustomAnswer = traceAnswer.trim().length > 0;
+  const incompleteCustomTrace = hasCustomQuery !== hasCustomAnswer;
 
   function update<K extends keyof ExperimentRequest>(key: K, value: ExperimentRequest[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -145,10 +165,80 @@ export function RunExperimentPanel({ onRun, isLoading }: RunExperimentPanelProps
         </p>
       )}
 
-      <button type="submit" className="btn btn-primary btn-with-spinner" disabled={isLoading}>
-        {isLoading && <span className="spinner spinner-inverse" aria-hidden="true" />}
-        {isLoading ? "Running…" : "Run experiment"}
-      </button>
+      <div className="experiment-actions">
+        <button type="submit" className="btn btn-primary btn-with-spinner" disabled={isLoading || isTraceLoading}>
+          {isLoading && <span className="spinner spinner-inverse" aria-hidden="true" />}
+          {isLoading ? "Running…" : "Run measured comparison"}
+        </button>
+        {onTrace && (
+          <div className="trace-action">
+            <label className="form-field trace-index-field">
+              <span>Replay event after warmup (0-based)</span>
+              <input
+                type="number"
+                min={0}
+                max={Math.max(0, replayCount - 1)}
+                value={selectedTraceIndex}
+                onChange={(event) => setTraceIndex(Number(event.target.value))}
+                disabled={isLoading || isTraceLoading || replayCount === 0}
+              />
+            </label>
+            <button
+              type="button"
+              className="btn btn-secondary btn-with-spinner"
+              disabled={isLoading || isTraceLoading || replayCount === 0 || incompleteCustomTrace}
+              onClick={() =>
+                onTrace({
+                  ...form,
+                  trace_index: selectedTraceIndex,
+                  ...(hasCustomQuery
+                    ? { query_text: traceQuery.trim(), answer_text: traceAnswer.trim() }
+                    : {}),
+                })
+              }
+            >
+              {isTraceLoading && <span className="spinner" aria-hidden="true" />}
+              {isTraceLoading ? "Replaying…" : "Trace this workload event"}
+            </button>
+          </div>
+        )}
+      </div>
+      {onTrace && (
+        <>
+          <div className="trace-query-fields">
+            <label className="form-field">
+              <span>Optional query override (blank uses the selected dataset event)</span>
+              <textarea
+                value={traceQuery}
+                maxLength={4000}
+                rows={2}
+                onChange={(event) => setTraceQuery(event.target.value)}
+                disabled={isLoading || isTraceLoading}
+              />
+            </label>
+            <label className="form-field">
+              <span>Candidate response (required with a custom query; no LLM call)</span>
+              <textarea
+                value={traceAnswer}
+                maxLength={20000}
+                rows={2}
+                onChange={(event) => setTraceAnswer(event.target.value)}
+                disabled={isLoading || isTraceLoading}
+              />
+            </label>
+          </div>
+          {incompleteCustomTrace && (
+            <p className="form-validation" role="alert">
+              Enter both a custom query and candidate response, or leave both blank to use the dataset event.
+            </p>
+          )}
+          <p className="form-note">
+            The trace replays the selected dataset history through the actual
+            SCALM and SPARC caches. On a miss, it uses the dataset response or
+            your supplied response; it never calls an LLM.
+          </p>
+        </>
+      )}
     </form>
   );
 }

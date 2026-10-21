@@ -1,4 +1,10 @@
-import type { ExperimentRequest, ExperimentResponse, ApiErrorShape } from "./types";
+import type {
+  DecisionTraceResponse,
+  ExperimentRequest,
+  ExperimentResponse,
+  TraceExperimentRequest,
+  ApiErrorShape,
+} from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
@@ -54,6 +60,41 @@ export async function runExperiment(
   }
 
   return (await response.json()) as ExperimentResponse;
+}
+
+/** Replays one actual workload event through SCALM and SPARC on the backend. */
+export async function runDecisionTrace(
+  request: TraceExperimentRequest,
+  signal?: AbortSignal
+): Promise<DecisionTraceResponse> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/experiments/trace`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+      signal,
+    });
+  } catch (networkError) {
+    throw new ApiError(
+      "Could not reach the backend API. Is it running and is VITE_API_BASE_URL correct?",
+      0,
+      networkError instanceof Error ? networkError.message : String(networkError)
+    );
+  }
+
+  if (!response.ok) {
+    let detail: string | undefined;
+    try {
+      const body = (await response.json()) as ApiErrorShape;
+      detail = body.detail ?? body.error;
+    } catch {
+      // response body wasn't JSON; fall through with no detail
+    }
+    throw new ApiError(`Backend returned ${response.status}`, response.status, detail);
+  }
+
+  return (await response.json()) as DecisionTraceResponse;
 }
 
 /** Calls GET {API_BASE_URL}/api/health. Used for a simple connectivity check. */

@@ -76,6 +76,7 @@ class ParetoLookupResult:
     entry: Optional[CacheEntry]
     similarity: Optional[float]
     threshold_used: Optional[float] = None
+    nearest_entry: Optional[CacheEntry] = None
 
 
 class ParetoCache:
@@ -119,10 +120,22 @@ class ParetoCache:
         if similarity >= threshold:
             entry.record_hit()
             self._hit_count += 1
-            return ParetoLookupResult(hit=True, entry=entry, similarity=similarity, threshold_used=threshold)
+            return ParetoLookupResult(
+                hit=True,
+                entry=entry,
+                similarity=similarity,
+                threshold_used=threshold,
+                nearest_entry=entry,
+            )
 
         self._miss_count += 1
-        return ParetoLookupResult(hit=False, entry=None, similarity=similarity, threshold_used=threshold)
+        return ParetoLookupResult(
+            hit=False,
+            entry=None,
+            similarity=similarity,
+            threshold_used=threshold,
+            nearest_entry=entry,
+        )
 
     def store(self, query_text: str, answer_text: str) -> Optional[CacheEntry]:
         embedding = self._embedding.embed(query_text)
@@ -200,6 +213,10 @@ class ParetoCache:
     @property
     def size(self) -> int:
         return self._store.size()
+
+    @property
+    def entries(self) -> list[CacheEntry]:
+        return self._store.all_entries()
 
     @property
     def hit_rate(self) -> float:

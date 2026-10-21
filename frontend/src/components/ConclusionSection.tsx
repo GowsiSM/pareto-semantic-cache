@@ -14,29 +14,38 @@ const METRICS: MetricSpec[] = [
   { label: "false-hit rate", key: "false_hit_rate", higherIsBetter: false },
 ];
 
-function bestSystemFor(results: ExperimentResults, metric: MetricSpec): CacheSystemId {
-  const ids: CacheSystemId[] = ["gptcache", "scalm", "pareto"];
-  return ids.reduce((best, id) => {
-    const better = metric.higherIsBetter
-      ? results[id][metric.key] > results[best][metric.key]
-      : results[id][metric.key] < results[best][metric.key];
-    return better ? id : best;
-  }, ids[0]);
+function bestSystemsFor(
+  results: ExperimentResults,
+  metric: MetricSpec,
+  ids: CacheSystemId[],
+): CacheSystemId[] {
+  const bestValue = ids.reduce((best, id) => {
+    const value = results[id][metric.key];
+    return metric.higherIsBetter ? Math.max(best, value) : Math.min(best, value);
+  }, results[ids[0]][metric.key]);
+  return ids.filter((id) => Math.abs(results[id][metric.key] - bestValue) <= 1e-12);
 }
 
 function pct(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-export function ConclusionSection({ results }: { results: ExperimentResults }) {
+export function ConclusionSection({
+  results,
+  systems = ["gptcache", "scalm", "pareto"],
+}: {
+  results: ExperimentResults;
+  systems?: CacheSystemId[];
+}) {
   const leaders = METRICS.map((metric) => ({
     metric,
-    winner: bestSystemFor(results, metric),
+    systems: bestSystemsFor(results, metric, systems),
   }));
 
-  const paretoWins = leaders.filter((l) => l.winner === "pareto");
-  const scalmWins = leaders.filter((l) => l.winner === "scalm");
-  const gptcacheWins = leaders.filter((l) => l.winner === "gptcache");
+  const paretoWins = leaders.filter((l) => l.systems.length === 1 && l.systems[0] === "pareto");
+  const scalmWins = leaders.filter((l) => l.systems.length === 1 && l.systems[0] === "scalm");
+  const gptcacheWins = leaders.filter((l) => l.systems.length === 1 && l.systems[0] === "gptcache");
+  const uniqueLeaderCount = gptcacheWins.length + scalmWins.length + paretoWins.length;
 
   return (
     <div className="conclusion">
@@ -45,15 +54,17 @@ export function ConclusionSection({ results }: { results: ExperimentResults }) {
         fixed narrative:
       </p>
       <ul className="conclusion-list">
-        {leaders.map(({ metric, winner }) => (
+        {leaders.map(({ metric, systems }) => (
           <li key={metric.label}>
-            <strong>{SYSTEM_LABELS[winner]}</strong> had the best {metric.label} (
-            {pct(results[winner][metric.key])}
+            <strong>{systems.map((id) => SYSTEM_LABELS[id]).join(" and ")}</strong>{" "}
+            {systems.length > 1 ? "tied for" : "had"} the best {metric.label} (
+            {pct(results[systems[0]][metric.key])}
             {metric.higherIsBetter ? ", highest" : ", lowest"}).
           </li>
         ))}
       </ul>
       <p>
+        {uniqueLeaderCount === 0 && "No metric had a unique leader in this run. "}
         {gptcacheWins.length > 0 && (
           <>
             GPTCache's unconditional admission policy tends to lead on raw{" "}
@@ -77,11 +88,9 @@ export function ConclusionSection({ results }: { results: ExperimentResults }) {
         )}
       </p>
       <p className="conclusion-note">
-        No system dominates every metric simultaneously in general — that is
-        the expected shape of a genuine multi-objective trade-off, not a
-        ranking to be collapsed into a single winner. Re-run with different
-        parameters (dataset, capacity, similarity threshold) to see how this
-        balance shifts.
+        {systems.length === 2
+          ? "This is a head-to-head comparison for the selected run; results may change with the workload and configuration."
+          : "No system dominates every metric simultaneously in general — that is the expected shape of a genuine multi-objective trade-off, not a ranking to be collapsed into a single winner. Re-run with different parameters (dataset, capacity, similarity threshold) to see how this balance shifts."}
       </p>
     </div>
   );

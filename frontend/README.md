@@ -1,9 +1,9 @@
 # SemantiCache Frontend
 
-A standalone React + TypeScript + Vite frontend for comparing GPTCache,
-SCALM, and Pareto semantic cache admission strategies. This frontend
-contains **no cache algorithm logic** -- every number shown comes from a
-real HTTP request to your backend.
+A React + TypeScript + Vite frontend for comparing GPTCache, SCALM, and the
+SPARC/Pareto semantic-cache extension. Cache decisions and reported metrics
+come from the FastAPI backend; the frontend renders the returned trace and
+experiment data.
 
 The repository includes a thin FastAPI backend at `backend/api.py`. Its CORS
 configuration allows local frontend development origins such as
@@ -35,9 +35,9 @@ npm run test    # runs the vitest suite
 npm run preview # serve the production build locally
 ```
 
-## Backend API Contract
+## Backend API
 
-Your backend needs to implement two endpoints:
+The FastAPI backend exposes these endpoints:
 
 ### `GET /api/health`
 
@@ -99,18 +99,34 @@ On error, return a non-2xx status with:
 { "error": "short message", "detail": "optional longer detail" }
 ```
 
-**Sketch of what the backend handler needs to do** (pseudocode, not
-provided -- you asked for frontend only):
+### `POST /api/experiments/trace`
 
-```python
-# 1. Build the dataset (synthetic_dataset.generate_dataset(...) or
-#    MOSSLoader(...).get_first_turn_pairs())
-# 2. Build the embedding provider (MockEmbeddingProvider or
-#    SentenceTransformerEmbeddingProvider)
-# 3. Run all three: GPTCache, SCALMValidator, ParetoValidator, with the
-#    SAME dataset, capacity, threshold, and embedding provider instance
-# 4. Return their .run() results, renamed into the "systems" shape above
+Accepts the same request fields as `/api/experiments/run`, plus:
+
+```json
+{
+  "trace_index": 0
+}
 ```
+
+`trace_index` is zero-based within the replay phase (after `warmup_count`).
+Optional `query_text` and `answer_text` fields let the presenter override the
+selected workload query; both must be supplied together.
+The response contains the selected query, similarity and effective threshold
+for SCALM and SPARC, the nearest cached query, admission result, evicted
+entries, cache snapshots, and SPARC objective/frontier values. A miss uses
+that dataset row's recorded response as the candidate by default; with an
+override, it uses the supplied response. No LLM call is made.
+Volatility is the project's keyword-classifier score, not ground-truth answer
+freshness. Per-query latency is not currently exposed.
+The current Pareto eviction implementation also applies its contribution
+calculation to dominated entries when such entries exist; that tie-break
+needs independent algorithm validation and is labeled as an implementation
+limitation in the trace view.
+
+The trace replays the selected workload through the existing cache classes.
+The aggregate experiment endpoint continues to run GPTCache, SCALM, and
+Pareto on the same workload.
 
 CORS: since this frontend runs on a different origin/port than the
 backend during development, make sure your API sends
@@ -121,27 +137,35 @@ Flask-CORS).
 
 ```
 src/
+|-- App.tsx                         # active research console and demo flow
+|-- conference.css                  # scoped conference visual system
 |-- api/
-|   |-- types.ts        # Request/response types matching the contract above
-|   `-- client.ts        # fetch wrapper -- throws real errors, never fakes data
+|   |-- types.ts                    # experiment and trace response types
+|   `-- client.ts                   # HTTP wrappers with explicit API errors
 |-- hooks/
-|   `-- useExperiment.ts # idle/loading/success/error state for a run
+|   |-- useExperiment.ts            # experiment request state
+|   `-- useDecisionTrace.ts         # workload replay request state
 |-- components/
-|   |-- Hero.tsx
-|   |-- ArchitectureDiagram.tsx   # static SVG-style illustration only
-|   |-- HowParetoWorks.tsx         # static illustration only
-|   |-- RunExperimentPanel.tsx     # form -> calls the real API
-|   |-- StatusBanner.tsx
+|   |-- DecisionJourney.tsx        # backend trace, decisions, cache snapshots
+|   |-- ParetoTradeoffPlot.tsx     # accessible plot of actual objective values
+|   |-- RunExperimentPanel.tsx     # measured-run and trace controls
 |   |-- ResultsTable.tsx
-|   |-- ResultsCharts.tsx          # recharts, driven entirely by API data
-|   `-- ConclusionSection.tsx      # computed from results every render,
-|                                    never a fixed "Pareto wins" narrative
+|   |-- ResultsCharts.tsx
+|   `-- ConclusionSection.tsx     # computed from measured results
 `-- test/
-    `-- ConclusionSection.test.tsx # verifies the conclusion logic is
-                                     genuinely data-driven, not hardcoded
+    |-- ConclusionSection.test.tsx
+    `-- DecisionJourney.test.tsx
 ```
 
-## Design
+## Presentation mode and data limits
 
-Minimal black-and-white, monospace accents, thin 1px borders, no rounded
-corners -- developer-tool aesthetic rather than a marketing-site look.
+Presentation mode hides utility controls and keeps the selected query and
+decision summary visible. Guided stages jump to real views; they do not
+simulate streaming or insert artificial delays. Reset clears loaded results
+and restores the replay controls to their defaults.
+
+The current backend does not expose per-query latency or ground-truth answer
+freshness. Aggregate staleness values follow the validators' classifier-based
+definition. Synthetic embeddings are lexical test embeddings and should not
+be presented as real semantic-model experimental evidence; use MOSS with the
+configured SentenceTransformer when reporting real-data results.

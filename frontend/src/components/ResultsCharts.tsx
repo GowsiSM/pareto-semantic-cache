@@ -1,24 +1,32 @@
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import type { ExperimentResults } from "../api/types";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import type { CacheSystemId, ExperimentResults } from "../api/types";
 import type { Theme } from "../hooks/useTheme";
 import { SYSTEM_LABELS, SYSTEM_ORDER } from "./ResultsTable";
 
-interface MetricChartRow {
-  metric: string;
-  GPTCache: number;
-  SCALM: number;
-  Pareto: number;
-}
-
-// Distinct per-theme palettes: pure black/white extremes would make a
-// bar invisible against a same-color background, so light and dark
-// modes each get colors with real contrast against their own canvas.
-const BAR_COLORS: Record<Theme, { GPTCache: string; SCALM: string; Pareto: string }> = {
-  light: { GPTCache: "#0a0a0a", SCALM: "#6b6b6b", Pareto: "#b5b5b5" },
-  dark: { GPTCache: "#f2f2f2", SCALM: "#a3a3a3", Pareto: "#5a5a5a" },
+// Consistent per-system colors matching the CSS design tokens.
+// These are hard-coded values (same as --pareto-color, --scalm-color, --gptcache-color)
+// so they work without CSS variable access inside Recharts SVG.
+const SYSTEM_COLORS: Record<string, string> = {
+  gptcache: "#475569", // slate-600
+  scalm: "#d97706",   // amber-600
+  pareto: "#0d9488",  // teal-600 (SPARC)
 };
 
-function buildRows(results: ExperimentResults): MetricChartRow[] {
+interface MetricChartRow {
+  metric: string;
+  [key: string]: number | string;
+}
+
+function buildRows(results: ExperimentResults, systems: CacheSystemId[]): MetricChartRow[] {
   const metricKeys: { label: string; key: keyof ExperimentResults["gptcache"] }[] = [
     { label: "Hit Ratio", key: "hit_rate" },
     { label: "Token Saving", key: "token_saving_rate" },
@@ -26,40 +34,64 @@ function buildRows(results: ExperimentResults): MetricChartRow[] {
     { label: "False-Hit", key: "false_hit_rate" },
   ];
 
-  return metricKeys.map(({ label, key }) => ({
-    metric: label,
-    GPTCache: Number((results.gptcache[key] * 100).toFixed(2)),
-    SCALM: Number((results.scalm[key] * 100).toFixed(2)),
-    Pareto: Number((results.pareto[key] * 100).toFixed(2)),
-  }));
+  return metricKeys.map(({ label, key }) => {
+    const row: MetricChartRow = { metric: label };
+    for (const id of systems) {
+      row[SYSTEM_LABELS[id]] = Number((results[id][key] * 100).toFixed(2));
+    }
+    return row;
+  });
 }
 
-export function ResultsCharts({ results, theme }: { results: ExperimentResults; theme: Theme }) {
-  const rows = buildRows(results);
-  const colors = BAR_COLORS[theme];
-  const axisColor = theme === "dark" ? "#f2f2f2" : "#0a0a0a";
-  const gridColor = theme === "dark" ? "#333333" : "#e5e5e5";
-  const tooltipBg = theme === "dark" ? "#171717" : "#ffffff";
+export function ResultsCharts({
+  results,
+  theme,
+  systems = SYSTEM_ORDER,
+}: {
+  results: ExperimentResults;
+  theme: Theme;
+  systems?: CacheSystemId[];
+}) {
+  const rows = buildRows(results, systems);
+  const axisColor = theme === "dark" ? "#f2f2f2" : "#0f172a";
+  const gridColor = theme === "dark" ? "#333333" : "#e2e8f0";
+  const tooltipBg = theme === "dark" ? "#1e293b" : "#ffffff";
 
   return (
     <div className="chart-wrapper">
-      <ResponsiveContainer width="100%" height={360}>
-        <BarChart data={rows} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={380}>
+        <BarChart data={rows} margin={{ top: 16, right: 24, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-          <XAxis dataKey="metric" stroke={axisColor} tick={{ fontSize: 12, fill: axisColor }} />
-          <YAxis stroke={axisColor} tick={{ fontSize: 12, fill: axisColor }} unit="%" />
+          <XAxis
+            dataKey="metric"
+            stroke={axisColor}
+            tick={{ fontSize: 12, fill: axisColor }}
+          />
+          <YAxis
+            stroke={axisColor}
+            tick={{ fontSize: 12, fill: axisColor }}
+            unit="%"
+          />
           <Tooltip
             contentStyle={{
-              border: `1px solid ${axisColor}`,
-              borderRadius: 0,
+              border: `1px solid ${gridColor}`,
+              borderRadius: 6,
               background: tooltipBg,
               color: axisColor,
+              fontSize: 12,
             }}
-            formatter={(value) => `${value}%`}
+            formatter={(value) => [`${value}%`]}
           />
-          <Legend wrapperStyle={{ color: axisColor }} />
-          {SYSTEM_ORDER.map((id) => (
-            <Bar key={id} dataKey={SYSTEM_LABELS[id]} fill={colors[SYSTEM_LABELS[id] as keyof typeof colors]} />
+          <Legend
+            wrapperStyle={{ color: axisColor, fontSize: 12 }}
+          />
+          {systems.map((id) => (
+            <Bar
+              key={id}
+              dataKey={SYSTEM_LABELS[id]}
+              fill={SYSTEM_COLORS[id]}
+              radius={[3, 3, 0, 0]}
+            />
           ))}
         </BarChart>
       </ResponsiveContainer>
